@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Secrets — NEVER commit environment files
+.env
+.env.*
+!.env.example
+
+# Build output
+.output/
+.wrangler/
+dist/
+.nitro/
+.tanstack/
+
+# Test artifacts (visual baselines in e2e/*-snapshots ARE committed)
+test-results/
+playwright-report/
+coverage/
+
+# Archived working notes from past sessions — kept locally for reference,
+# not published (some contain the project ref/URL).
+docs/archive/
+
+# Local / editor
+*.local
+.DS_Store
+Thumbs.db
+*.log
+
+# Claude Code local settings
+.claude/settings.local.json
