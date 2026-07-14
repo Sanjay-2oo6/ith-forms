@@ -130,16 +130,37 @@ load-test/           zero-dependency load-test script
 
 ## Deployment
 
-Any Node 18+ host can run the built output:
+### Netlify (default)
 
-```bash
-npm run build
-node .output/server/index.mjs   # respects PORT
-```
+The repo ships a `netlify.toml` and builds with Nitro's `netlify` preset
+(`npm run build` → static assets in `dist/`, SSR server in
+`.netlify/functions-internal/`, auto-detected). Steps:
 
-Put a TLS-terminating reverse proxy in front, set the two `VITE_*` env vars
-at build time, and point an uptime monitor at `GET /health`. Platform notes
-(Cloudflare/Netlify/Vercel presets): [docs/deployment.md](docs/deployment.md).
+1. Connect the repo; build command `npm run build`, publish directory `dist`
+   (already set in `netlify.toml`).
+2. **Set the environment variables** under **Site settings → Environment
+   variables** — this is required or the app shows a "Configuration required"
+   screen and login fails:
+
+   | Variable | Value |
+   |---|---|
+   | `VITE_SUPABASE_URL` | `https://<your-project-ref>.supabase.co` |
+   | `VITE_SUPABASE_ANON_KEY` | your project's anon/public key |
+
+   Their scope **must include "Builds"** — they are inlined at build time, so
+   a Runtime-only scope does not work.
+3. Redeploy with **Clear cache and deploy site**.
+
+The anon key is public by design (RLS governs access); `netlify.toml` already
+whitelists it for Netlify's secret scanner via `SECRETS_SCAN_OMIT_KEYS`.
+Never set the service-role key.
+
+### Other hosts
+
+Any Node 18+ host can run the built output; `NITRO_PRESET` selects the
+target (`netlify`, `cloudflare-module`, `node-server`, …). Put TLS in front,
+set the two `VITE_*` vars at build time, and point an uptime monitor at
+`GET /health`. Platform notes: [docs/deployment.md](docs/deployment.md).
 
 ## Known limitations & manual steps
 

@@ -17,7 +17,19 @@
   NODE_VERSION = "20"
   NITRO_PRESET = "netlify"
 
-# NOTE: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set as
-# environment variables in the Netlify dashboard (Site settings ->
-# Environment variables). They are inlined at build time; the anon key is
-# public by design (RLS governs all access). Never add the service-role key.
+  # The anon key is a JWT that is INTENTIONALLY inlined into the client bundle
+  # (it is public — row-level security governs access). Netlify's secret
+  # scanner otherwise fails the build when it finds the value in the output.
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_ANON_KEY"
+
+# ─── REQUIRED: set these in the Netlify dashboard, NOT here ───────────────────
+# The app cannot start without them (login shows "Configuration required"):
+#
+#   VITE_SUPABASE_URL       = https://<your-project-ref>.supabase.co
+#   VITE_SUPABASE_ANON_KEY  = <your project's anon/public key>
+#
+# Set them under Site settings → Environment variables with a scope that
+# INCLUDES "Builds" (they are inlined at build time — a Runtime-only scope
+# will NOT work), then redeploy with "Clear cache and deploy site".
+# They are deliberately NOT committed here so secrets stay out of the repo;
+# the anon key is public by design. Never add the service-role key.

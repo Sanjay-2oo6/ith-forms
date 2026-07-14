@@ -8,6 +8,8 @@ import {
 import { Toaster } from "sonner";
 import type { ReactNode } from "react";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
+import { ConfigError } from "@/components/ConfigError";
+import { supabaseConfigError } from "@/integrations/supabase/client";
 import "../styles.css";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -44,6 +46,14 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  // Missing build-time config (e.g. Supabase env vars) would otherwise crash
+  // on first client use with a cryptic error. Surface a clear screen instead —
+  // this covers every route (login, admin, public forms) with one guard.
+  if (supabaseConfigError) {
+    return <ConfigError message={supabaseConfigError} />;
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* ConfirmProvider must sit ABOVE the routes: route components call
