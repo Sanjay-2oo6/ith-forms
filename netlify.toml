@@ -1,0 +1,23 @@
+# Netlify deployment for ITH-FORMS (TanStack Start + Nitro).
+#
+# The build uses Nitro's `netlify` preset (set below and in vite.config.ts),
+# which emits:
+#   • static client assets  -> dist/            (the publish directory)
+#   • the SSR server         -> .netlify/functions-internal/  (auto-detected)
+# Nitro also auto-generates the routing redirects and headers, so no manual
+# SPA-fallback rule is needed — non-asset requests are routed to the server
+# function, which renders the HTML shell and applies src/server.ts (CSP + /health).
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Match the app's toolchain; keeps the Nitro preset deterministic.
+  NODE_VERSION = "20"
+  NITRO_PRESET = "netlify"
+
+# NOTE: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set as
+# environment variables in the Netlify dashboard (Site settings ->
+# Environment variables). They are inlined at build time; the anon key is
+# public by design (RLS governs all access). Never add the service-role key.
