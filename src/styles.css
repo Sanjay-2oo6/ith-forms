@@ -1,0 +1,270 @@
+@import "tailwindcss" source(none);
+@source "../src";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * ITH-FORMS design system — "Warm Editorial".
+ *
+ * Premium, minimal, luxury-stationery aesthetic:
+ *   deep navy shell · warm cream content · soft ivory cards · burnt-brown accent.
+ *
+ * Every component consumes the semantic tokens below (bg-card, text-foreground,
+ * bg-primary, border-border, bg-sidebar-*), so the whole app re-themes from here.
+ * Colours use hex — no oklch requirement.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Playfair Display", ui-serif, Georgia, "Times New Roman", serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 1rem; /* 16px — large, premium rounding */
+
+  /* Surfaces */
+  --background: #F5F1E8;              /* warm cream — main content */
+  --foreground: #1A1A1A;             /* primary text */
+  --card: #FCFAF5;                   /* soft ivory — cards & containers */
+  --card-foreground: #1A1A1A;
+  --popover: #FCFAF5;
+  --popover-foreground: #1A1A1A;
+
+  /* Accent */
+  --primary: #8C3514;                /* burnt brown */
+  --primary-foreground: #FFFFFF;
+  --accent: #8C3514;
+  --accent-foreground: #FFFFFF;
+
+  /* Neutrals */
+  --secondary: #ECE5D8;              /* warm beige — chips, hovers */
+  --secondary-foreground: #1A1A1A;
+  --muted: #EFE9DC;
+  --muted-foreground: #5E5E5E;       /* secondary text */
+
+  /* Status */
+  --destructive: #B93A32;            /* error */
+  --destructive-foreground: #FFFFFF;
+  --success: #3E7B3C;
+  --warning: #D39A20;
+  --info: #336B8E;
+
+  /* Lines & fields */
+  --border: #D9D2C5;                 /* thin beige border */
+  --input: #D9D2C5;                  /* input border */
+  --ring: #8C3514;                   /* focus ring */
+
+  /* Charts — warm, muted */
+  --chart-1: #8C3514;
+  --chart-2: #3E7B3C;
+  --chart-3: #D39A20;
+  --chart-4: #336B8E;
+  --chart-5: #A6704A;
+
+  /* Navigation — warm panel, part of the editorial theme */
+  --sidebar: #EFE8DB;                /* warm sand — a touch deeper than content */
+  --sidebar-foreground: #1A1A1A;     /* dark text, matches theme */
+  --sidebar-primary: #8C3514;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #8C3514;         /* active item — burnt brown */
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #D9D2C5;         /* beige border, matches theme */
+  --sidebar-ring: #8C3514;
+}
+
+/* Dark mode theme */
+.dark {
+  --radius: 1rem;
+
+  /* Dark surfaces */
+  --background: #0A0A0F;              /* deep dark blue-black */
+  --foreground: #E8E3D6;             /* cream text */
+  --card: #131318;                   /* slightly lighter card */
+  --card-foreground: #E8E3D6;
+  --popover: #131318;
+  --popover-foreground: #E8E3D6;
+
+  /* Accent - keep burnt brown */
+  --primary: #B5491F;                /* brighter burnt brown for dark mode */
+  --primary-foreground: #FFFFFF;
+  --accent: #B5491F;
+  --accent-foreground: #FFFFFF;
+
+  /* Dark neutrals */
+  --secondary: #1E1E25;              /* dark gray */
+  --secondary-foreground: #E8E3D6;
+  --muted: #1A1A20;
+  --muted-foreground: #9B958A;       /* muted cream text */
+
+  /* Status colors - adjusted for dark */
+  --destructive: #DC4C41;
+  --destructive-foreground: #FFFFFF;
+  --success: #4FA24D;
+  --warning: #E5B133;
+  --info: #4A8DB8;
+
+  /* Dark lines & fields */
+  --border: #2A2A32;
+  --input: #2A2A32;
+  --ring: #B5491F;
+
+  /* Charts - same warm colors */
+  --chart-1: #B5491F;
+  --chart-2: #4FA24D;
+  --chart-3: #E5B133;
+  --chart-4: #4A8DB8;
+  --chart-5: #C0845A;
+
+  /* Sidebar in dark mode — a dark surface that matches the theme,
+     not a stand-apart navy. */
+  --sidebar: #101016;
+  --sidebar-foreground: #E8E3D6;
+  --sidebar-primary: #B5491F;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #B5491F;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #2A2A32;
+  --sidebar-ring: #B5491F;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Editorial serif for hero / page / section headings */
+  h1, h2 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+
+  /* Primary action buttons render as pills (spec: fully rounded).
+     Element+class specificity beats Tailwind's .rounded-* utilities. */
+  button.bg-primary,
+  a.bg-primary,
+  [type="submit"].bg-primary {
+    border-radius: 9999px;
+  }
+
+  /* Soft brown focus ring on form controls that don't set their own. */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent);
+    outline: none;
+  }
+}
+
+/*
+ * Motion — a single, consistent fade-up.
+ * opacity 0→1, translateY 20px→0, 300ms, natural ease-out.
+ * This is the ONLY motion effect used across the app.
+ */
+@keyframes ith-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/*
+ * fill-mode 'backwards' (NOT 'both'/'forwards') is load-bearing: with a
+ * persistent fill, the final keyframe's transform stays applied forever,
+ * and ANY non-none transform turns the element into the containing block
+ * for position:fixed descendants — modals/pickers inside it then scroll
+ * with the content instead of pinning to the viewport. 'backwards' still
+ * covers the pre-animation frame, and the end state equals the natural
+ * style, so nothing changes visually.
+ */
+.animate-fade-up {
+  animation: ith-fade-up 300ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/*
+ * Admin tab transitions — a gentler, snappier variant of the fade-up.
+ * Smaller lift (8px) + shorter duration so rapid tab switching feels smooth
+ * instead of jumpy/flickery. Used on the AdminShell content panel.
+ */
+@keyframes ith-page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-page-in {
+  animation: ith-page-in 220ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/* Optional gentle stagger for grids of cards. */
+.stagger-children > * {
+  animation: ith-fade-up 300ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 30ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 70ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 110ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 190ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 230ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 270ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 310ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-page-in,
+  .stagger-children > * {
+    animation: none;
+  }
+  * {
+    scroll-behavior: auto;
+  }
+}
