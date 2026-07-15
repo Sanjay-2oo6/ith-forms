@@ -17,10 +17,17 @@
   NODE_VERSION = "20"
   NITRO_PRESET = "netlify"
 
-  # The anon key is a JWT that is INTENTIONALLY inlined into the client bundle
-  # (it is public — row-level security governs access). Netlify's secret
-  # scanner otherwise fails the build when it finds the value in the output.
-  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_ANON_KEY"
+  # Both VITE_ vars are frontend-safe Supabase config that is INTENTIONALLY
+  # inlined into the client/SSR bundles by Vite at build time:
+  #   • VITE_SUPABASE_URL      — the public API endpoint the browser calls
+  #                              (visible in every network request)
+  #   • VITE_SUPABASE_ANON_KEY — the public anon key (row-level security, not
+  #                              secrecy, governs access)
+  # Netlify's secret scanner otherwise fails the build on finding them in
+  # dist/assets/*, the SSR output, and Nitro's intermediate files. Only these
+  # two expected public values are omitted — scanning stays ON for everything
+  # else (e.g. a service-role key would still correctly fail the build).
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY"
 
 # ─── REQUIRED: set these in the Netlify dashboard, NOT here ───────────────────
 # The app cannot start without them (login shows "Configuration required"):
