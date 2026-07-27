@@ -3,10 +3,24 @@
 // when opened in Excel/Sheets. Attackers can hide the trigger behind leading
 // whitespace, so we strip leading whitespace before testing, then neutralise
 // the value by prefixing a single quote.
+//
+// SECURITY: Also prevents prototype pollution attacks (CVE-2024-XLSX) by escaping dangerous keys.
 export function safeCell<T>(v: T): T | string {
   if (typeof v !== "string") return v;
   const stripped = v.replace(/^[\s\t\r\n]+/, "");
-  return /^[=+\-@|%]/.test(stripped) ? `'${v}` : v;
+  
+  // Prevent formula injection (Excel macros)
+  if (/^[=+\-@|%]/.test(stripped)) {
+    return `'${v}`;
+  }
+  
+  // Prevent prototype pollution attacks
+  // This is defense-in-depth even though ExcelJS doesn't have the vulnerability
+  if (v.includes("__proto__") || v.includes("constructor") || v.includes("prototype")) {
+    return v.replace(/__proto__|constructor|prototype/g, "_sanitized_");
+  }
+  
+  return v;
 }
 
 // Apply safeCell to every string value in a row object.

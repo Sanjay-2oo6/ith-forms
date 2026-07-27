@@ -173,8 +173,8 @@ export function buildExportRows(
 }
 
 // Full XLSX export: batched fetch → label mapping → formula-injection
-// hardening (safeRow) → browser download → best-effort copy into the
-// submission-files bucket so the Files page can list past exports.
+// hardening (safeRow) → ExcelJS workbook → browser download → best-effort copy
+// into the submission-files bucket so the Files page can list past exports.
 export async function exportResponsesXlsx(opts: {
   formId: string;
   slug: string | null;
@@ -187,19 +187,67 @@ export async function exportResponsesXlsx(opts: {
 
   const rows = buildExportRows(exportSubs, opts.questions, opts.optionMap);
   const safe = rows.map(safeRow);
-  const XLSX = await import("xlsx");
-  const ws = XLSX.utils.json_to_sheet(safe);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Responses");
+
+  // Use ExcelJS instead of XLSX (safer, no prototype pollution vulnerability)
+  const ExcelJS = await import("exceljs");
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Responses");
+
+  // Add header row
+  if (safe.length > 0) {
+    const headers = Object.keys(safe[0]);
+    worksheet.addRow(headers);
+    
+    // Make header bold
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFE0E0E0" },
+    };
+  }
+
+  // Add data rows
+  safe.forEach((row) => {
+    worksheet.addRow(Object.values(row));
+  });
+
+  // Auto-fit columns
+  worksheet.columns.forEach((column) => {
+    let maxLength = 0;
+    column.eachCell?.({ includeEmpty: true }, (cell) => {
+      const cellLength = String(cell.value).length;
+      if (cellLength > maxLength) maxLength = cellLength;
+    });
+    column.width = Math.min(maxLength + 2, 50);
+  });
+
   const fileName = `${opts.slug ?? opts.formId}-responses.xlsx`;
 
-  XLSX.writeFile(wb, fileName);
+  // Write to buffer
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
 
+  // Browser download
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+
+  // Best-effort: Save export metadata to storage
   try {
-    const wbOut = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    const blob = new Blob([wbOut], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
     const storagePath = `exports/${opts.formId}/${fileName}`;
-    const { error: upErr } = await supabase.storage.from("submission-files").upload(storagePath, blob, { upsert: true });
+    const { error: upErr } = await supabase.storage
+      .from("submission-files")
+      .upload(storagePath, blob, { upsert: true });
+    
     if (!upErr) {
       await supabase.from("submission_files").insert({
         form_id: opts.formId,
@@ -213,6 +261,7 @@ export async function exportResponsesXlsx(opts: {
     }
   } catch (err) {
     console.error("Failed to track export file:", err);
+    // Don't fail the entire export if tracking fails
   }
 
   return exportSubs.length;

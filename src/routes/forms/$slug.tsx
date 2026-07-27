@@ -449,6 +449,7 @@ function PublicForm() {
     }
 
     // Upload files to storage, then register metadata through the validated RPC.
+    // Issue #12: Add error handling with user-visible messages
     const failedUploads: string[] = [];
     const successByQuestion: Record<string, number> = {};
     for (const q of questions.filter(q => FILE_TYPES.includes(q.type))) {
@@ -462,9 +463,17 @@ function PublicForm() {
 
         const { error: upErr } = await supabase.storage.from("submission-files").upload(path, file);
         if (upErr) {
-          failedUploads.push(`${q.label}: ${file.name}`);
+          // Issue #12: Show detailed error to user
+          console.error(`[upload-error] ${q.label}/${file.name}:`, upErr);
+          const errorMsg = upErr.message?.includes("Payload too large")
+            ? `${q.label}: ${file.name} is too large`
+            : upErr.message?.includes("bucket_not_found")
+            ? `${q.label}: Upload service temporarily unavailable`
+            : `${q.label}: ${file.name}`;
+          failedUploads.push(errorMsg);
           continue;
         }
+        
         const { error: regErr } = await supabase.rpc("register_submission_file", {
           p_submission_id: result.submission_id,
           p_question_id: q.id,
@@ -474,7 +483,9 @@ function PublicForm() {
           p_mime_type: file.type,
         });
         if (regErr) {
-          failedUploads.push(`${q.label}: ${file.name}`);
+          // Issue #12: Registration error — clean up orphaned file
+          console.error(`[register-error] ${q.label}/${file.name}:`, regErr);
+          failedUploads.push(`${q.label}: ${file.name} (registration failed)`);
           // F13: the object is in storage but has no DB row — remove it so it
           // doesn't sit orphaned in the bucket.
           await supabase.storage.from("submission-files").remove([path]);
@@ -919,9 +930,17 @@ function QuestionField({ question: q, value, error, onChange }: {
         <fieldset className="space-y-2" {...ariaProps}>
           <legend className="sr-only">{q.label}</legend>
           {(q.options ?? []).map(o => (
-            <label key={o.value} className="flex items-center gap-2 cursor-pointer text-sm">
-              <input type="radio" name={q.id} value={o.value} checked={(value as string) === o.value}
-                onChange={() => onChange(o.value)} className="accent-primary" />
+            <label key={o.value} className="flex items-center gap-2 cursor-pointer text-sm" htmlFor={`${q.id}-${o.value}`}>
+              <input 
+                id={`${q.id}-${o.value}`}
+                type="radio" 
+                name={q.id} 
+                value={o.value} 
+                checked={(value as string) === o.value}
+                onChange={() => onChange(o.value)} 
+                className="accent-primary"
+                aria-label={`${q.label}: ${o.label}`}
+              />
               {o.label}
             </label>
           ))}
@@ -932,12 +951,18 @@ function QuestionField({ question: q, value, error, onChange }: {
         <fieldset className="space-y-2" {...ariaProps}>
           <legend className="sr-only">{q.label}</legend>
           {(q.options ?? []).map(o => (
-            <label key={o.value} className="flex items-center gap-2 cursor-pointer text-sm">
-              <input type="checkbox" checked={((value as string[]) ?? []).includes(o.value)}
+            <label key={o.value} className="flex items-center gap-2 cursor-pointer text-sm" htmlFor={`${q.id}-${o.value}`}>
+              <input 
+                id={`${q.id}-${o.value}`}
+                type="checkbox" 
+                checked={((value as string[]) ?? []).includes(o.value)}
                 onChange={e => {
                   const curr = (value as string[]) ?? [];
                   onChange(e.target.checked ? [...curr, o.value] : curr.filter(v => v !== o.value));
-                }} className="accent-primary rounded" />
+                }} 
+                className="accent-primary rounded"
+                aria-label={`${q.label}: ${o.label}`}
+              />
               {o.label}
             </label>
           ))}
@@ -964,10 +989,16 @@ function QuestionField({ question: q, value, error, onChange }: {
         <fieldset className="flex gap-1.5 flex-wrap" {...ariaProps}>
           <legend className="sr-only">{q.label}</legend>
           {Array.from({ length: Math.max(2, Math.min(10, q.config?.ratingMax ?? 10)) }, (_, i) => i + 1).map(n => (
-            <button key={n} type="button" onClick={() => onChange(String(n))}
+            <button 
+              key={n} 
+              type="button" 
+              onClick={() => onChange(String(n))}
               className={`h-10 w-10 rounded-lg border text-sm font-bold transition-colors ${
                 (value as string) === String(n) ? "bg-primary text-primary-foreground border-primary" : "border-input hover:bg-secondary"
-              }`}>
+              }`}
+              aria-label={`${q.label}: ${n}`}
+              aria-pressed={(value as string) === String(n)}
+            >
               {n}
             </button>
           ))}
@@ -979,10 +1010,16 @@ function QuestionField({ question: q, value, error, onChange }: {
         <fieldset className="flex gap-1.5 flex-wrap" {...ariaProps}>
           <legend className="sr-only">{q.label}</legend>
           {[1,2,3,4,5,6,7,8,9,10].map(n => (
-            <button key={n} type="button" onClick={() => onChange(String(n))}
+            <button 
+              key={n} 
+              type="button" 
+              onClick={() => onChange(String(n))}
               className={`h-9 w-9 rounded-lg border text-xs font-semibold transition-colors ${
                 (value as string) === String(n) ? "bg-primary text-primary-foreground border-primary" : "border-input hover:bg-secondary"
-              }`}>
+              }`}
+              aria-label={`${q.label}: ${n}`}
+              aria-pressed={(value as string) === String(n)}
+            >
               {n}
             </button>
           ))}
@@ -991,27 +1028,32 @@ function QuestionField({ question: q, value, error, onChange }: {
 
       {/* Multiple Choice Grid — one selection per row */}
       {q.type === "grid" && (
-        <div className="overflow-x-auto">
-          <table className="text-sm">
+        <div className="overflow-x-auto" role="group" aria-label={q.label} aria-describedby={q.description ? `desc-${q.id}` : undefined}>
+          <table className="text-sm" role="grid" aria-label={`${q.label} - Multiple choice grid`}>
             <thead>
               <tr>
-                <th className="p-2"></th>
+                <th className="p-2" scope="row"></th>
                 {(q.config?.cols ?? []).map((c, ci) => (
-                  <th key={ci} className="p-2 text-xs font-medium text-center">{c}</th>
+                  <th key={ci} className="p-2 text-xs font-medium text-center" scope="col">{c}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {(q.config?.rows ?? []).map((r, ri) => (
                 <tr key={ri} className="border-t border-border/40">
-                  <td className="p-2 text-xs font-medium whitespace-nowrap">{r}</td>
+                  <td className="p-2 text-xs font-medium whitespace-nowrap" scope="row">{r}</td>
                   {(q.config?.cols ?? []).map((c, ci) => {
                     const grid = parseGrid(value as string | undefined);
                     return (
                       <td key={ci} className="p-2 text-center">
-                        <input type="radio" name={`${q.id}-${ri}`} className="accent-primary"
+                        <input 
+                          type="radio" 
+                          name={`${q.id}-${ri}`} 
+                          className="accent-primary"
                           checked={grid[r] === c}
-                          onChange={() => onChange(JSON.stringify({ ...grid, [r]: c }))} />
+                          onChange={() => onChange(JSON.stringify({ ...grid, [r]: c }))}
+                          aria-label={`${r}: ${c}`}
+                        />
                       </td>
                     );
                   })}
@@ -1019,6 +1061,7 @@ function QuestionField({ question: q, value, error, onChange }: {
               ))}
             </tbody>
           </table>
+          {q.description && <p id={`desc-${q.id}`} className="text-xs text-muted-foreground mt-2">{q.description}</p>}
         </div>
       )}
 
@@ -1036,9 +1079,15 @@ function QuestionField({ question: q, value, error, onChange }: {
 
       {q.type === "consent" && (
         <label className="flex items-start gap-2 cursor-pointer text-sm">
-          <input id={`input-${q.id}`} type="checkbox" checked={(value as string) === "agreed"}
+          <input 
+            id={`input-${q.id}`} 
+            type="checkbox" 
+            checked={(value as string) === "agreed"}
             onChange={e => onChange(e.target.checked ? "agreed" : "")}
-            className="mt-0.5 accent-primary rounded shrink-0" {...ariaProps} />
+            className="mt-0.5 accent-primary rounded shrink-0" 
+            {...ariaProps}
+            aria-label={`${q.label}: ${q.placeholder ?? "I agree to the terms above"}`}
+          />
           <span>{q.placeholder ?? "I agree to the terms above"}</span>
         </label>
       )}

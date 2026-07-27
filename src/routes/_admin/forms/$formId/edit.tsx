@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useBlocker } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { type QuestionType, type QuestionTemplate } from "@/lib/question-types";
@@ -32,6 +33,7 @@ type SaveRpcResult = { ok?: boolean };
 
 function FormEditor() {
   const { confirm } = useConfirm();
+  const queryClient = useQueryClient();
   const { formId } = Route.useParams();
   const [form, setForm] = useState<Form | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
@@ -200,7 +202,14 @@ function FormEditor() {
       if (uploadedPaths.length > 0) await supabase.storage.from("form-assets").remove(uploadedPaths);
       console.error("[builder-save] failed:", err);
       setSaveState("error");
-      toast.error(err instanceof Error ? err.message : "Save failed");
+      
+      // Issue #16: Invalidate cache on mutation error so stale data doesn't persist
+      // The next page load/refetch will get fresh data from the server
+      await queryClient.invalidateQueries({ queryKey: ["form-meta", form.id] });
+      await queryClient.invalidateQueries({ queryKey: ["form-questions", form.id] });
+      await queryClient.invalidateQueries({ queryKey: ["form-sections", form.id] });
+      
+      toast.error(err instanceof Error ? err.message : "Save failed. Reloading...");
       return false;
     }
   }
