@@ -153,7 +153,7 @@ CREATE TABLE public.audit_logs (
 );
 
 CREATE TABLE IF NOT EXISTS public.app_settings (
-  id                          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id                          integer PRIMARY KEY CHECK (id = 1),
   app_name                    text DEFAULT 'ITH Forms',
   org_name                    text DEFAULT 'InnoTech Hub',
   powered_by                  text DEFAULT 'Powered by ITH Forms',
