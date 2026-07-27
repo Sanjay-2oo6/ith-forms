@@ -646,7 +646,7 @@ CREATE POLICY "public_read_form_assets" ON storage.objects
 
 CREATE INDEX IF NOT EXISTS idx_submissions_form_id ON public.submissions(form_id);
 CREATE INDEX IF NOT EXISTS idx_submissions_submitted_at ON public.submissions(submitted_at DESC);
-CREATE INDEX IF NOT EXISTS idx_submissions_form_submitted ON public.submissions(form_id, submitted_at DESC) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_submissions_form_submitted ON public.submissions(form_id, submitted_at DESC);
 CREATE INDEX IF NOT EXISTS idx_submission_answers_sub_id ON public.submission_answers(submission_id);
 CREATE INDEX IF NOT EXISTS idx_form_questions_form_id ON public.form_questions(form_id);
 CREATE INDEX IF NOT EXISTS idx_form_questions_section_id ON public.form_questions(section_id);
