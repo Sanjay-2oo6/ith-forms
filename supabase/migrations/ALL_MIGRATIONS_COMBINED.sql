@@ -585,8 +585,6 @@ CREATE POLICY "admin_answers_all" ON public.submission_answers
 -- submission_files
 CREATE POLICY "admin_files_all" ON public.submission_files
   FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
-CREATE POLICY "anon_upload_submission_files" ON public.submission_files
-  FOR INSERT TO anon WITH CHECK (bucket_id = 'submission-files');
 
 -- submission_notes
 CREATE POLICY "admin_notes_all" ON public.submission_notes
@@ -613,19 +611,34 @@ CREATE POLICY "app_settings_anon_read" ON public.app_settings
 -- ============================================================
 
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('submission-files', 'submission-files', false), ('form-assets', 'form-assets', true)
-ON CONFLICT DO NOTHING;
+VALUES ('submission-files', 'submission-files', false)
+ON CONFLICT (id) DO UPDATE SET public = false;
 
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('form-assets', 'form-assets', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "anon_upload_submission_files" ON storage.objects;
 CREATE POLICY "anon_upload_submission_files" ON storage.objects
-  FOR INSERT TO anon WITH CHECK (bucket_id = 'submission-files');
+  FOR INSERT TO anon
+  WITH CHECK (bucket_id = 'submission-files');
+
+DROP POLICY IF EXISTS "admin_all_submission_files" ON storage.objects;
 CREATE POLICY "admin_all_submission_files" ON storage.objects
-  FOR ALL TO authenticated USING (bucket_id = 'submission-files' AND public.is_admin())
+  FOR ALL TO authenticated
+  USING (bucket_id = 'submission-files' AND public.is_admin())
   WITH CHECK (bucket_id = 'submission-files' AND public.is_admin());
+
+DROP POLICY IF EXISTS "admin_write_form_assets" ON storage.objects;
 CREATE POLICY "admin_write_form_assets" ON storage.objects
-  FOR ALL TO authenticated USING (bucket_id = 'form-assets' AND public.is_admin())
+  FOR ALL TO authenticated
+  USING (bucket_id = 'form-assets' AND public.is_admin())
   WITH CHECK (bucket_id = 'form-assets' AND public.is_admin());
+
+DROP POLICY IF EXISTS "public_read_form_assets" ON storage.objects;
 CREATE POLICY "public_read_form_assets" ON storage.objects
-  FOR SELECT TO anon, authenticated USING (bucket_id = 'form-assets');
+  FOR SELECT TO anon, authenticated
+  USING (bucket_id = 'form-assets');
 
 -- ============================================================
 -- Indexes
