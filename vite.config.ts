@@ -8,14 +8,10 @@ export default defineConfig({
     server: { entry: "server" },
   },
 
-  // Deploy target. The base Lovable config defaults Nitro to
-  // `cloudflare-module` (which outputs to `.output/`); we deploy to Netlify,
-  // whose Nitro preset emits static assets to `dist/` plus a serverless
-  // function in `.netlify/functions-internal/` — preserving the SSR shell and
-  // src/server.ts (CSP headers + /health). Override-able via NITRO_PRESET so
-  // other targets (e.g. `cloudflare-module`) stay reachable without a code change.
+  // Deploy target. Use Vercel preset for Vercel deployment.
+  // Override-able via NITRO_PRESET environment variable.
   nitro: {
-    preset: process.env.NITRO_PRESET || "netlify",
+    preset: process.env.NITRO_PRESET || "vercel",
   },
 
   // @ts-expect-error — server option is supported at runtime by lovable config
