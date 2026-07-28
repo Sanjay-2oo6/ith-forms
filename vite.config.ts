@@ -12,14 +12,6 @@ export default defineConfig({
   // Override-able via NITRO_PRESET environment variable.
   nitro: {
     preset: process.env.NITRO_PRESET || "vercel",
-    // Ensure static assets are properly served
-    serveStatic: true,
-    // Assets should be served directly without being bundled into the server
-    rollupConfig: {
-      output: {
-        manualChunks: {},
-      },
-    },
   },
 
   // @ts-expect-error — server option is supported at runtime by lovable config

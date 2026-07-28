@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { useAppSettings, DEFAULT_APP_SETTINGS } from "@/lib/use-app-settings";
 
 // Static fallbacks — kept exported for use as loading/error defaults.
@@ -18,19 +19,26 @@ export function useBranding() {
 }
 
 // Logo with the branding name and powered-by text (settings-driven).
-export function IthLogo({ size = 40, withWordmark = true }: { size?: number; withWordmark?: boolean }) {
+// Memoized to prevent unnecessary re-renders that cause flickering.
+export const IthLogo = memo(function IthLogo({ 
+  size = 40, 
+  withWordmark = true 
+}: { 
+  size?: number; 
+  withWordmark?: boolean 
+}) {
   const { appName, poweredBy } = useBranding();
   return (
     <div className="flex items-center gap-3">
-      {/* Logo image */}
+      {/* Logo image — served from /public/ith-logo.svg, included in static assets */}
       <img
         src="/ith-logo.svg"
         alt={`${appName} logo`}
         style={{ width: size, height: size }}
         className="shrink-0"
         onError={(e) => {
-          // Fallback to PNG if SVG not found
-          (e.target as HTMLImageElement).src = '/ith-logo.png';
+          // Prevent error events from propagating and causing re-renders
+          e.currentTarget.style.display = "none";
         }}
       />
       {withWordmark && (
@@ -41,4 +49,4 @@ export function IthLogo({ size = 40, withWordmark = true }: { size?: number; wit
       )}
     </div>
   );
-}
+});
