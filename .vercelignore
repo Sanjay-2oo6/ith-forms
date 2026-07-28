@@ -1,0 +1,46 @@
+# Vercel deployment ignore file
+# Excludes files that don't need to be deployed
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+test-results/
+playwright-report/
+
+# Production
+.output/
+.netlify/
+dist/
+
+# Build artifacts
+.tanstack/
+.nitro/
+.wrangler/
+
+# Environment (local only)
+.env
+.env.local
+.env.*.local
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Docs (archived)
+docs/archive/
+
+# Documentation (optional - uncomment if you don't want docs deployed)
+# docs/
+# DEPLOYMENT_CHECKLIST.md
+# QUICK_START.md
