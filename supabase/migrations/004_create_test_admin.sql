@@ -17,7 +17,7 @@
 
 INSERT INTO public.admin_users (user_id, email, display_name, is_active)
 VALUES (
-  'a0000000-0000-0000-0000-000000000001',  -- Test UUID
+  '863013aa-a4e7-46e0-a023-9478267fb883',  -- Test UUID
   'admin@test.local',
   'Test Admin',
   true

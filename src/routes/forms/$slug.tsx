@@ -9,7 +9,6 @@ import { Loader2, Upload, X, AlertCircle, Eye } from "lucide-react";
 import { z } from "zod";
 
 export const Route = createFileRoute("/forms/$slug")({
-  ssr: false,
   component: PublicForm,
 });
 
