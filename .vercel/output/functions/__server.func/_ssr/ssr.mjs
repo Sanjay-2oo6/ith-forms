@@ -1,7 +1,7 @@
 //#region node_modules/.nitro/vite/services/ssr/index.js
 var serverEntryPromise;
 async function getServerEntry() {
-	if (!serverEntryPromise) serverEntryPromise = import("./server-Bl22hwa6.mjs").then((m) => m.default ?? m);
+	if (!serverEntryPromise) serverEntryPromise = import("./server-YFXObVah.mjs").then((m) => m.default ?? m);
 	return serverEntryPromise;
 }
 function buildSecurityHeaders() {
@@ -64,9 +64,26 @@ async function healthCheck() {
 var server_default = { async fetch(request, env, ctx) {
 	try {
 		if (new URL(request.url).pathname === "/health") return withSecurityHeaders(await healthCheck());
-		return withSecurityHeaders(await (await getServerEntry()).fetch(request, env, ctx));
+		const res = await (await getServerEntry()).fetch(request, env, ctx);
+		if (res.status >= 500) try {
+			const bodyText = await res.clone().text();
+			console.error("[Server 500 Response]", {
+				url: request.url,
+				status: res.status,
+				body: bodyText
+			});
+		} catch {}
+		return withSecurityHeaders(res);
 	} catch (error) {
-		console.error(error);
+		console.error("[Server Exception Error]", {
+			url: request.url,
+			method: request.method,
+			error: error instanceof Error ? {
+				message: error.message,
+				stack: error.stack,
+				name: error.name
+			} : String(error)
+		});
 		return withSecurityHeaders(new Response("Internal Server Error", { status: 500 }));
 	}
 } };
