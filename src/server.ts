@@ -105,7 +105,15 @@ export default {
       const res = await handler.fetch(request, env, ctx);
       return withSecurityHeaders(res);
     } catch (error) {
-      console.error(error);
+      console.error("[Server Error]", {
+        url: request.url,
+        method: request.method,
+        error: error instanceof Error ? {
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+        } : String(error),
+      });
       return withSecurityHeaders(new Response("Internal Server Error", { status: 500 }));
     }
   },
