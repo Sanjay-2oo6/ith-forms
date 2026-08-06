@@ -24,10 +24,14 @@ export const supabaseConfigError: string | null = isSupabaseConfigured
     `Environment variables, scope "Builds"), then redeploy with a cleared cache.`;
 
 function createSupabaseClient() {
-  const url = SUPABASE_URL || "https://placeholder.supabase.co";
-  const key = SUPABASE_ANON_KEY || "placeholder";
+  if (!isSupabaseConfigured) {
+    // Fail with an actionable message rather than supabase-js's opaque
+    // "supabaseUrl is required". The app-level guard (see __root.tsx) renders
+    // a friendly screen before any code reaches this point in normal use.
+    throw new Error(`[ITH-FORMS configuration] ${supabaseConfigError}`);
+  }
 
-  return createClient(url, key, {
+  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
       storage: typeof window !== "undefined" ? localStorage : undefined,
       persistSession: typeof window !== "undefined",
