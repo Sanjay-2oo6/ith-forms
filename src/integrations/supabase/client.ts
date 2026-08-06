@@ -16,12 +16,22 @@ const missingEnv: string[] = [
 /** True when both required Supabase env vars were present at build time. */
 export const isSupabaseConfigured = missingEnv.length === 0;
 
+// Debug logging (remove after fixing)
+if (typeof window !== "undefined") {
+  console.log("[Supabase Config]", {
+    configured: isSupabaseConfigured,
+    urlLength: SUPABASE_URL.length,
+    keyLength: SUPABASE_ANON_KEY.length,
+    missing: missingEnv,
+  });
+}
+
 /** Human-readable configuration error, or null when correctly configured. */
 export const supabaseConfigError: string | null = isSupabaseConfigured
   ? null
   : `Missing required environment variable${missingEnv.length > 1 ? "s" : ""}: ${missingEnv.join(", ")}. ` +
-    `These must be set in the deployment's build environment (e.g. Netlify → Site settings → ` +
-    `Environment variables, scope "Builds"), then redeploy with a cleared cache.`;
+    `These must be set in the deployment's build environment (e.g. Vercel Settings → Environment Variables), ` +
+    `then redeploy with a cleared cache.`;
 
 function createSupabaseClient() {
   if (!isSupabaseConfigured) {
