@@ -7,7 +7,7 @@ import { B as CircleAlert, T as LoaderCircle, j as Eye, r as Upload, t as X } fr
 import { i as stringType } from "./_libs/zod.mjs";
 import { a as fileSizeCheck, o as uuidv4, r as SubmitPayloadSchema } from "./_ssr/validation-Cb9MIurp.mjs";
 import { t as themeContainerStyle } from "./_ssr/theme-utils-CZ5WP4IV.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/_slug-CivNrByT.js
+//#region node_modules/.nitro/vite/services/ssr/assets/_slug-X-JaF5zi.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var TEXT_TYPES = [
@@ -601,7 +601,7 @@ function PublicForm() {
 					const sectionQs = questions.filter((q) => q.section_id === sec.id);
 					return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 						className: "space-y-4",
-						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+						children: [multi && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 							className: "border-b border-border/40 pb-2",
 							children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", {
 								className: "font-semibold text-lg",
