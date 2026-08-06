@@ -661,12 +661,11 @@ function PublicForm() {
           const sectionQs = questions.filter(q => q.section_id === sec.id);
           return (
             <div key={sec.id} className="space-y-4">
-              {stepSections.length > 1 && (
-                <div className="border-b border-border/40 pb-2">
-                  <h2 className="font-semibold text-lg">{sec.title}</h2>
-                  {sec.description && <p className="text-sm text-muted-foreground">{sec.description}</p>}
-                </div>
-              )}
+                  {/* Show section title and description on every step (not just multi-section forms) */}
+              <div className="border-b border-border/40 pb-2">
+                <h2 className="font-semibold text-lg">{sec.title}</h2>
+                {sec.description && <p className="text-sm text-muted-foreground">{sec.description}</p>}
+              </div>
               {sectionQs.map(q => (
                 <MemoQuestionField
                   key={q.id}
@@ -1028,8 +1027,13 @@ function QuestionField({ question: q, value, error, onChange }: {
 
       {/* Multiple Choice Grid — one selection per row */}
       {q.type === "grid" && (
-        <div className="overflow-x-auto" role="group" aria-label={q.label} aria-describedby={q.description ? `desc-${q.id}` : undefined}>
-          <table className="text-sm" role="grid" aria-label={`${q.label} - Multiple choice grid`}>
+        <>
+          <label className="block text-lg font-bold text-foreground mb-3">
+            {q.label}{q.required && <span className="text-destructive ml-1">*</span>}
+          </label>
+          {q.description && <p className="text-sm text-muted-foreground mb-3">{q.description}</p>}
+          <div className="overflow-x-auto" role="group" aria-label={q.label} aria-describedby={q.description ? `desc-${q.id}` : undefined}>
+            <table className="text-sm" role="grid" aria-label={`${q.label} - Multiple choice grid`}>
             <thead>
               <tr>
                 <th className="p-2" scope="row"></th>
@@ -1061,8 +1065,8 @@ function QuestionField({ question: q, value, error, onChange }: {
               ))}
             </tbody>
           </table>
-          {q.description && <p id={`desc-${q.id}`} className="text-xs text-muted-foreground mt-2">{q.description}</p>}
-        </div>
+          </div>
+        </>
       )}
 
       {/* File upload — single file, accept from config (default pdf/docx/jpg/jpeg/png) */}
