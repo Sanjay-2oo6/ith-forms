@@ -1,7 +1,7 @@
 //#region node_modules/.nitro/vite/services/ssr/index.js
 var serverEntryPromise;
 async function getServerEntry() {
-	if (!serverEntryPromise) serverEntryPromise = import("./server-izl2p8Qm.mjs").then((m) => m.default ?? m);
+	if (!serverEntryPromise) serverEntryPromise = import("./server-DQGvX4_f.mjs").then((m) => m.default ?? m);
 	return serverEntryPromise;
 }
 function buildSecurityHeaders() {

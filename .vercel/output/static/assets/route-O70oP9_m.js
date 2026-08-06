@@ -1,1 +1,0 @@
-import{_ as e}from"./ith-brand-CofbdzJC.js";import{t}from"./AdminShell-CRvlxsFd.js";import{l as n}from"./index-CT3YX9mU.js";var r=e();function i(){return(0,r.jsx)(t,{children:(0,r.jsx)(n,{})})}export{i as component};

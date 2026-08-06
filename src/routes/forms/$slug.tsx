@@ -661,12 +661,10 @@ function PublicForm() {
           const sectionQs = questions.filter(q => q.section_id === sec.id);
           return (
             <div key={sec.id} className="space-y-4">
-              {multi && (
-                <div className="border-b border-border/40 pb-2">
-                  <h2 className="font-semibold text-lg">{sec.title}</h2>
-                  {sec.description && <p className="text-sm text-muted-foreground">{sec.description}</p>}
-                </div>
-              )}
+              <div className="border-b border-border/40 pb-2">
+                <h2 className="font-semibold text-lg">{sec.title}</h2>
+                {sec.description && <p className="text-sm text-muted-foreground">{sec.description}</p>}
+              </div>
               {sectionQs.map(q => (
                 <MemoQuestionField
                   key={q.id}
