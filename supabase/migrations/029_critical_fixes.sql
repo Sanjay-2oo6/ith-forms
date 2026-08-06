@@ -95,7 +95,7 @@ END;
 $$;
 
 -- ============================================================
--- 6. FIX: Add trigger for submission_status_history
+-- 6. FIX: Add trigger for submission_status_history (if not exists)
 -- ============================================================
 DROP TRIGGER IF EXISTS submission_status_changed ON public.submissions;
 
@@ -217,21 +217,42 @@ END;
 $$;
 
 -- ============================================================
--- 8. FIX: Add foreign key constraint with CASCADE for form_questions
+-- 8. FIX: Add foreign key constraint with CASCADE for form_questions (if not exists)
 -- ============================================================
-ALTER TABLE public.form_questions
-DROP CONSTRAINT IF EXISTS form_questions_section_id_fkey,
-ADD CONSTRAINT form_questions_section_id_fkey 
-  FOREIGN KEY (section_id) 
-  REFERENCES public.form_sections(id) 
-  ON DELETE CASCADE
-  ON UPDATE CASCADE;
+DO $$
+BEGIN
+  -- Drop existing constraint if it exists
+  IF EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE table_name = 'form_questions' 
+    AND constraint_name = 'form_questions_section_id_fkey'
+  ) THEN
+    ALTER TABLE public.form_questions DROP CONSTRAINT form_questions_section_id_fkey;
+  END IF;
+  
+  -- Add the CASCADE constraint
+  ALTER TABLE public.form_questions
+  ADD CONSTRAINT form_questions_section_id_fkey 
+    FOREIGN KEY (section_id) 
+    REFERENCES public.form_sections(id) 
+    ON DELETE CASCADE
+    ON UPDATE CASCADE;
+END $$;
 
 -- ============================================================
--- 9. SECURITY: Add check constraint for answer value length
+-- 9. SECURITY: Add check constraint for answer value length (if not exists)
 -- ============================================================
-ALTER TABLE public.submission_answers
-ADD CONSTRAINT check_answer_value_length CHECK (length(value) <= 20000);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.table_constraints 
+    WHERE table_name = 'submission_answers' 
+    AND constraint_name = 'check_answer_value_length'
+  ) THEN
+    ALTER TABLE public.submission_answers
+    ADD CONSTRAINT check_answer_value_length CHECK (length(value) <= 20000);
+  END IF;
+END $$;
 
 -- ============================================================
 -- 10. DOCUMENTATION: Migration complete
