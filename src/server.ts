@@ -6,9 +6,20 @@ let serverEntryPromise: Promise<ServerEntry> | undefined;
 
 async function getServerEntry(): Promise<ServerEntry> {
   if (!serverEntryPromise) {
-    serverEntryPromise = import("@tanstack/react-start/server-entry").then(
-      (m) => (m.default ?? m) as ServerEntry,
-    );
+    try {
+      serverEntryPromise = import("@tanstack/react-start/server-entry").then(
+        (m) => {
+          console.log("[Server Entry] Successfully imported TanStack Start server entry");
+          return (m.default ?? m) as ServerEntry;
+        },
+      ).catch((err) => {
+        console.error("[Server Entry] Failed to import TanStack Start:", err);
+        throw err;
+      });
+    } catch (err) {
+      console.error("[Server Entry] Import error:", err);
+      throw err;
+    }
   }
   return serverEntryPromise;
 }
@@ -97,36 +108,72 @@ async function healthCheck(): Promise<Response> {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    const url = new URL(request.url);
+    const path = url.pathname;
+    
     try {
-      if (new URL(request.url).pathname === "/health") {
+      // Health check endpoint
+      if (path === "/health") {
         return withSecurityHeaders(await healthCheck());
       }
+      
+      // Log all requests for debugging
+      console.log(`[REQUEST] ${request.method} ${path}`);
+      
       const handler = await getServerEntry();
       const res = await handler.fetch(request, env, ctx);
+      
+      // Log response status
+      console.log(`[RESPONSE] ${request.method} ${path} → ${res.status}`);
+      
+      // Capture 5xx errors with detailed info
       if (res.status >= 500) {
         try {
           const bodyText = await res.clone().text();
-          console.error("[Server 500 Response]", {
+          console.error("[ERROR 500+]", {
             url: request.url,
+            path: path,
+            method: request.method,
             status: res.status,
-            body: bodyText,
+            bodyPreview: bodyText.substring(0, 500),
           });
-        } catch {
-          // ignore clone error
+        } catch (e) {
+          console.error("[ERROR 500+ - could not read body]", {
+            url: request.url,
+            path: path,
+            status: res.status,
+          });
         }
       }
+      
       return withSecurityHeaders(res);
     } catch (error) {
-      console.error("[Server Exception Error]", {
+      console.error("[UNCAUGHT ERROR]", {
         url: request.url,
+        path: path,
         method: request.method,
+        timestamp: new Date().toISOString(),
         error: error instanceof Error ? {
           message: error.message,
           stack: error.stack,
           name: error.name,
-        } : String(error),
+          toString: error.toString(),
+        } : {
+          type: typeof error,
+          value: String(error),
+        },
       });
-      return withSecurityHeaders(new Response("Internal Server Error", { status: 500 }));
+      
+      return withSecurityHeaders(
+        new Response(
+          JSON.stringify({
+            error: "Internal Server Error",
+            path: path,
+            method: request.method,
+          }),
+          { status: 500, headers: { "Content-Type": "application/json" } }
+        )
+      );
     }
   },
 };
