@@ -7,7 +7,7 @@ import { B as CircleAlert, T as LoaderCircle, j as Eye, r as Upload, t as X } fr
 import { i as stringType } from "./_libs/zod.mjs";
 import { a as fileSizeCheck, o as uuidv4, r as SubmitPayloadSchema } from "./_ssr/validation-Cb9MIurp.mjs";
 import { t as themeContainerStyle } from "./_ssr/theme-utils-CZ5WP4IV.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/_slug-CivNrByT.js
+//#region node_modules/.nitro/vite/services/ssr/assets/_slug-dYACrWbP.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var TEXT_TYPES = [
@@ -134,6 +134,21 @@ function PublicForm() {
 			supabase.from("form_questions").select("*").eq("form_id", f.id).order("position"),
 			supabase.from("form_themes").select("*").eq("form_id", f.id).maybeSingle()
 		]);
+		if (sRes.error) {
+			console.error("sections error:", sRes.error);
+			setFormState("unavailable");
+			return;
+		}
+		if (qRes.error) {
+			console.error("questions error:", qRes.error);
+			setFormState("unavailable");
+			return;
+		}
+		if (tRes.error) {
+			console.error("themes error:", tRes.error);
+			setFormState("unavailable");
+			return;
+		}
 		let loadedForm = f;
 		let loadedSections = sRes.data ?? [];
 		let loadedQuestions = qRes.data ?? [];

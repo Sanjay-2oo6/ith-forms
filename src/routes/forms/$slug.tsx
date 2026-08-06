@@ -197,6 +197,11 @@ function PublicForm() {
       supabase.from("form_themes").select("*").eq("form_id", f.id).maybeSingle(),
     ]);
 
+    // Check for RLS/query errors
+    if (sRes.error) { console.error("sections error:", sRes.error); setFormState("unavailable"); return; }
+    if (qRes.error) { console.error("questions error:", qRes.error); setFormState("unavailable"); return; }
+    if (tRes.error) { console.error("themes error:", tRes.error); setFormState("unavailable"); return; }
+
     let loadedForm = f as Form;
     let loadedSections = (sRes.data ?? []) as Section[];
     let loadedQuestions = (qRes.data ?? []) as unknown as Question[];
