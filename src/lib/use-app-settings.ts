@@ -25,14 +25,19 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
 };
 
 export async function fetchAppSettings(): Promise<AppSettings> {
-  const { data, error } = await supabase
-    .from("app_settings")
-    .select("app_name,org_name,powered_by,default_appearance,default_confirmation_message")
-    .eq("id", 1)
-    .maybeSingle();
-  // Missing table (pre-024) or missing row → defaults, never an error state.
-  if (error || !data) return DEFAULT_APP_SETTINGS;
-  return { ...DEFAULT_APP_SETTINGS, ...(data as Partial<AppSettings>) };
+  if (typeof window === "undefined") return DEFAULT_APP_SETTINGS;
+  try {
+    const { data, error } = await supabase
+      .from("app_settings")
+      .select("app_name,org_name,powered_by,default_appearance,default_confirmation_message")
+      .eq("id", 1)
+      .maybeSingle();
+    // Missing table (pre-024) or missing row → defaults, never an error state.
+    if (error || !data) return DEFAULT_APP_SETTINGS;
+    return { ...DEFAULT_APP_SETTINGS, ...(data as Partial<AppSettings>) };
+  } catch {
+    return DEFAULT_APP_SETTINGS;
+  }
 }
 
 // Cached app settings; readable by anon (public form branding) and admins.
