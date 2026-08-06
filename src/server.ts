@@ -103,9 +103,21 @@ export default {
       }
       const handler = await getServerEntry();
       const res = await handler.fetch(request, env, ctx);
+      if (res.status >= 500) {
+        try {
+          const bodyText = await res.clone().text();
+          console.error("[Server 500 Response]", {
+            url: request.url,
+            status: res.status,
+            body: bodyText,
+          });
+        } catch {
+          // ignore clone error
+        }
+      }
       return withSecurityHeaders(res);
     } catch (error) {
-      console.error("[Server Error]", {
+      console.error("[Server Exception Error]", {
         url: request.url,
         method: request.method,
         error: error instanceof Error ? {
