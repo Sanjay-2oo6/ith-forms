@@ -9,7 +9,6 @@ let verifiedAdmin: { user: User; expiresAt: number } | null = null;
 export const Route = createFileRoute("/_admin")({
   ssr: false,
   beforeLoad: async () => {
-    if (typeof window === "undefined") return;
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) {
       verifiedAdmin = null;
