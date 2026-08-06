@@ -22,7 +22,7 @@ async function getServerEntry(): Promise<ServerEntry> {
 // gains nonce support. Full analysis + revisit criteria: docs/security.md.
 // In development we also allow 'unsafe-eval' + HMR websockets for Vite.
 function buildSecurityHeaders(): Record<string, string> {
-  const isDev = import.meta.env.DEV;
+  const isDev = process.env.NODE_ENV === "development";
 
   const scriptSrc = isDev
     ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
