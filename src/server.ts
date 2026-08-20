@@ -56,7 +56,7 @@ export default {
     try {
       const handler = await getServerEntry();
       const res = await handler.fetch(request, env, ctx);
-      return withSecurityHeaders(res);
+      return res;
     } catch (error) {
       console.error("[SERVER ERROR]", error);
       return new Response(
