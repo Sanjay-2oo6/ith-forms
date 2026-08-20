@@ -56,6 +56,11 @@ let _supabaseError: Error | null = null;
 // Lazy proxy — client is only instantiated on first use (never during SSR module eval)
 export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
   get(_, prop, receiver) {
+    // On server-side: never initialize
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+    
     if (_supabaseError) {
       throw _supabaseError;
     }
