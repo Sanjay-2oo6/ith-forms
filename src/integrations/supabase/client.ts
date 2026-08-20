@@ -51,11 +51,22 @@ function createSupabaseClient() {
 }
 
 let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
+let _supabaseError: Error | null = null;
 
 // Lazy proxy — client is only instantiated on first use (never during SSR module eval)
 export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
   get(_, prop, receiver) {
-    if (!_supabase) _supabase = createSupabaseClient();
+    if (_supabaseError) {
+      throw _supabaseError;
+    }
+    if (!_supabase) {
+      try {
+        _supabase = createSupabaseClient();
+      } catch (err) {
+        _supabaseError = err instanceof Error ? err : new Error(String(err));
+        throw _supabaseError;
+      }
+    }
     return Reflect.get(_supabase, prop, receiver);
   },
 });
