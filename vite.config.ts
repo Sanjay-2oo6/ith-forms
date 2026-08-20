@@ -8,10 +8,10 @@ export default defineConfig({
     server: { entry: "server" },
   },
 
-  // Deploy target. Use Vercel preset for Vercel deployment.
-  // Override-able via NITRO_PRESET environment variable.
+  // Deploy target. Use Node preset as it's more compatible across platforms.
+  // Can be overridden via NITRO_PRESET environment variable.
   nitro: {
-    preset: process.env.NITRO_PRESET || "vercel",
+    preset: process.env.NITRO_PRESET || "node",
   },
 
   // @ts-expect-error — server option is supported at runtime by lovable config
