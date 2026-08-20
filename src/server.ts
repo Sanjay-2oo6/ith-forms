@@ -122,8 +122,28 @@ export default {
       // Log all requests for debugging
       console.log(`[REQUEST] ${request.method} ${path}`);
       
-      const handler = await getServerEntry();
-      const res = await handler.fetch(request, env, ctx);
+      let handler: ServerEntry;
+      try {
+        handler = await getServerEntry();
+      } catch (err) {
+        console.error("[SERVER ENTRY LOAD FAILED]", err);
+        throw err;
+      }
+      
+      let res: Response;
+      try {
+        res = await handler.fetch(request, env, ctx);
+      } catch (handlerErr) {
+        console.error("[HANDLER EXECUTION FAILED]", {
+          path,
+          method: request.method,
+          error: handlerErr instanceof Error ? {
+            message: handlerErr.message,
+            stack: handlerErr.stack,
+          } : String(handlerErr),
+        });
+        throw handlerErr;
+      }
       
       // Log response status
       console.log(`[RESPONSE] ${request.method} ${path} → ${res.status}`);
@@ -137,7 +157,7 @@ export default {
             path: path,
             method: request.method,
             status: res.status,
-            bodyPreview: bodyText.substring(0, 500),
+            bodyPreview: bodyText.substring(0, 1000),
           });
         } catch (e) {
           console.error("[ERROR 500+ - could not read body]", {
@@ -159,7 +179,6 @@ export default {
           message: error.message,
           stack: error.stack,
           name: error.name,
-          toString: error.toString(),
         } : {
           type: typeof error,
           value: String(error),
@@ -172,6 +191,7 @@ export default {
             error: "Internal Server Error",
             path: path,
             method: request.method,
+            details: error instanceof Error ? error.message : String(error),
           }),
           { status: 500, headers: { "Content-Type": "application/json" } }
         )
