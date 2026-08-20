@@ -1,7 +1,9 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
-  beforeLoad: () => {
-    throw redirect({ to: "/admin/login" });
-  },
+  component: RootComponent,
 });
+
+function RootComponent() {
+  return <div>Loading...</div>;
+}
