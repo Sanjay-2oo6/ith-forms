@@ -113,88 +113,41 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
     
+    console.log(`[FETCH START] ${request.method} ${path} at ${new Date().toISOString()}`);
+    
     try {
       // Health check endpoint
       if (path === "/health") {
-        return withSecurityHeaders(await healthCheck());
-      }
-      
-      // Log all requests for debugging
-      console.log(`[REQUEST] ${request.method} ${path}`);
-      
-      let handler: ServerEntry;
-      try {
-        handler = await getServerEntry();
-      } catch (err) {
-        console.error("[SERVER ENTRY LOAD FAILED]", err);
-        throw err;
-      }
-      
-      let res: Response;
-      try {
-        res = await handler.fetch(request, env, ctx);
-      } catch (handlerErr) {
-        console.error("[HANDLER EXECUTION FAILED]", {
-          path,
-          method: request.method,
-          error: handlerErr instanceof Error ? {
-            message: handlerErr.message,
-            stack: handlerErr.stack,
-          } : String(handlerErr),
+        console.log("[HEALTH CHECK]");
+        return new Response(JSON.stringify({ ok: true, ts: new Date().toISOString() }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
         });
-        throw handlerErr;
       }
       
-      // Log response status
-      console.log(`[RESPONSE] ${request.method} ${path} → ${res.status}`);
+      console.log(`[BEFORE GET ENTRY] ${path}`);
+      const handler = await getServerEntry();
+      console.log(`[AFTER GET ENTRY] ${path}`);
       
-      // Capture 5xx errors with detailed info
-      if (res.status >= 500) {
-        try {
-          const bodyText = await res.clone().text();
-          console.error("[ERROR 500+]", {
-            url: request.url,
-            path: path,
-            method: request.method,
-            status: res.status,
-            bodyPreview: bodyText.substring(0, 1000),
-          });
-        } catch (e) {
-          console.error("[ERROR 500+ - could not read body]", {
-            url: request.url,
-            path: path,
-            status: res.status,
-          });
-        }
-      }
+      const res = await handler.fetch(request, env, ctx);
+      console.log(`[GOT RESPONSE] ${path} → ${res.status}`);
       
       return withSecurityHeaders(res);
     } catch (error) {
-      console.error("[UNCAUGHT ERROR]", {
-        url: request.url,
-        path: path,
-        method: request.method,
-        timestamp: new Date().toISOString(),
-        error: error instanceof Error ? {
-          message: error.message,
-          stack: error.stack,
-          name: error.name,
-        } : {
-          type: typeof error,
-          value: String(error),
-        },
-      });
+      console.error(`[ERROR AT ${path}]`, error);
+      console.error(`[ERROR TYPE]`, error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack?.substring(0, 500),
+      } : typeof error);
       
-      return withSecurityHeaders(
-        new Response(
-          JSON.stringify({
-            error: "Internal Server Error",
-            path: path,
-            method: request.method,
-            details: error instanceof Error ? error.message : String(error),
-          }),
-          { status: 500, headers: { "Content-Type": "application/json" } }
-        )
+      return new Response(
+        JSON.stringify({
+          error: "Internal Server Error",
+          path: path,
+          details: error instanceof Error ? error.message : String(error),
+        }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
   },
