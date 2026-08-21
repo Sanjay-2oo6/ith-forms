@@ -1083,14 +1083,18 @@ function QuestionField({ question: q, value, error, onChange }: {
 
       {/* File upload — single file, accept from config (default pdf/docx/jpg/jpeg/png) */}
       {FILE_TYPES.includes(q.type) && (
-        <FileUploader
-          id={`input-${q.id}`}
-          files={(value as File[]) ?? []}
-          accept={(q.config?.accept ?? [".pdf", ".docx", ".jpg", ".jpeg", ".png"]).join(",")}
-          acceptExts={q.config?.accept ?? [".pdf", ".docx", ".jpg", ".jpeg", ".png"]}
-          maxSizeMB={q.config?.maxSizeMB ?? 10}
-          onChange={files => onChange(files)}
-        />
+        <>
+          <FileUploader
+            id={`input-${q.id}`}
+            files={(value as File[]) ?? []}
+            accept={(q.config?.accept ?? [".pdf", ".docx", ".jpg", ".jpeg", ".png"]).join(",")}
+            acceptExts={q.config?.accept ?? [".pdf", ".docx", ".jpg", ".jpeg", ".png"]}
+            maxSizeMB={q.config?.maxSizeMB ?? 10}
+            onChange={files => onChange(files)}
+          />
+          {/* DEBUG: Log question config */}
+          {typeof window !== "undefined" && console.log(`[FileUpload] Q: ${q.label}, Config:`, q.config, "Accept:", q.config?.accept ?? "USING_DEFAULTS")}
+        </>
       )}
 
       {q.type === "consent" && (
