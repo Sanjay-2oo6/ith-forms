@@ -205,6 +205,14 @@ function PublicForm() {
     let loadedForm = f as Form;
     let loadedSections = (sRes.data ?? []) as Section[];
     let loadedQuestions = (qRes.data ?? []) as unknown as Question[];
+    
+    // DEBUG: Log loaded questions
+    if (typeof window !== "undefined") {
+      console.log(`[Form Load] Loaded ${loadedQuestions.length} questions`, 
+        loadedQuestions.map(q => ({ label: q.label, type: q.type, config: q.config }))
+      );
+    }
+    
     if (authorized && previewDraftKey) {
       const draft = readPreviewDraft(previewDraftKey, loadedForm.id);
       if (draft) {
@@ -1084,6 +1092,13 @@ function QuestionField({ question: q, value, error, onChange }: {
       {/* File upload — single file, accept from config (default pdf/docx/jpg/jpeg/png) */}
       {FILE_TYPES.includes(q.type) && (
         <>
+          {typeof window !== "undefined" && (() => {
+            const cfgAccept = q.config?.accept;
+            const hasPdf = Array.isArray(cfgAccept) && cfgAccept.includes(".pdf");
+            const msg = `[FileUpload] "${q.label}" | Config: ${JSON.stringify(q.config)} | Has PDF: ${hasPdf} | Using: ${q.config?.accept ? "DB" : "DEFAULTS"}`;
+            console.log(msg);
+            return null;
+          })()}
           <FileUploader
             id={`input-${q.id}`}
             files={(value as File[]) ?? []}
@@ -1092,8 +1107,6 @@ function QuestionField({ question: q, value, error, onChange }: {
             maxSizeMB={q.config?.maxSizeMB ?? 10}
             onChange={files => onChange(files)}
           />
-          {/* DEBUG: Log question config */}
-          {typeof window !== "undefined" && console.log(`[FileUpload] Q: ${q.label}, Config:`, q.config, "Accept:", q.config?.accept ?? "USING_DEFAULTS")}
         </>
       )}
 
