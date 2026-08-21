@@ -664,6 +664,13 @@ function PublicForm() {
           </div>
         )}
 
+        {/* Form description: Only show once at the very start (on first step or first section) */}
+        {form.description && safeStep === 0 && (
+          <div className="space-y-2 pb-4 border-b border-border/40">
+            <p className="text-sm text-muted-foreground">{form.description}</p>
+          </div>
+        )}
+
         {/* Progress bar on multi-section forms */}
         {multi && (
           <div className="space-y-1.5">
@@ -682,10 +689,12 @@ function PublicForm() {
           const sectionQs = questions.filter(q => q.section_id === sec.id);
           return (
             <div key={sec.id} className="space-y-4">
+              {/* Section title and description: Only shown at the start of this section */}
               <div className="border-b border-border/40 pb-2">
                 <h2 className="font-semibold text-lg">{sec.title}</h2>
                 {sec.description && <p className="text-sm text-muted-foreground">{sec.description}</p>}
               </div>
+              {/* Section questions */}
               {sectionQs.map(q => (
                 <MemoQuestionField
                   key={q.id}
