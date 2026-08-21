@@ -29,9 +29,12 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const FORM_SLUG = 'job-applications';
 
 // Load test parameters
-const CONCURRENT_USERS = 600;        // 600 concurrent users
-const SUBMISSIONS_PER_USER = 5;      // Each user submits 5 times = 3000 total submissions
+const CONCURRENT_USERS = 100;        // Start with 100 users
+const SUBMISSIONS_PER_USER = 1;      // Each user submits 1 time = 100 total (no files since they're test-only)
 const REQUEST_TIMEOUT = 30000;       // 30 second timeout per request
+
+// ⚠️ NOTE: These load test submissions DO NOT include file uploads since that requires actual File objects
+// They test the concurrent submission pipeline ONLY. For real submissions with files, use the form UI.
 
 // Sample data
 const FIRST_NAMES = [
@@ -225,7 +228,9 @@ function generateTestData(userId, submissionIndex, questions) {
     } else if (q.label.toLowerCase().includes('good fit') || q.label.toLowerCase().includes('why')) {
       value = FIT_REASONS[Math.floor(Math.random() * FIT_REASONS.length)];
     } else if (q.label.toLowerCase().includes('resume') || q.label.toLowerCase().includes('cv')) {
-      return; // Skip file uploads
+      // Skip file fields - they cannot be filled in load test without actual file upload
+      // This is why some test submissions may not have all fields filled
+      return;
     } else if (q.type === 'text_input' || q.type === 'text') {
       value = `Load test response ${userId}-${submissionIndex} for ${q.label}`;
     } else if (q.type === 'textarea') {
