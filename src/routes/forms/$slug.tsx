@@ -466,18 +466,26 @@ function PublicForm() {
           .slice(0, 200);
         const path = `${result.submission_id}/${q.id}/${Date.now()}-${safeFileName}`;
 
+        // Log file details for debugging
+        console.log(`[file-upload] Starting upload: ${q.label}/${file.name} (${file.size} bytes, type: ${file.type})`);
+
         const { error: upErr } = await supabase.storage.from("submission-files").upload(path, file);
         if (upErr) {
           // Issue #12: Show detailed error to user
           console.error(`[upload-error] ${q.label}/${file.name}:`, upErr);
           const errorMsg = upErr.message?.includes("Payload too large")
-            ? `${q.label}: ${file.name} is too large`
+            ? `${q.label}: ${file.name} is too large (max 10MB)`
             : upErr.message?.includes("bucket_not_found")
             ? `${q.label}: Upload service temporarily unavailable`
-            : `${q.label}: ${file.name}`;
+            : upErr.message?.includes("Network")
+            ? `${q.label}: Network error - please check connection`
+            : `${q.label}: ${file.name} - ${upErr.message || 'upload failed'}`;
           failedUploads.push(errorMsg);
+          console.error(`[upload-debug] Full error:`, JSON.stringify(upErr));
           continue;
         }
+
+        console.log(`[file-upload] Success: ${q.label}/${file.name}`);
         
         const { error: regErr } = await supabase.rpc("register_submission_file", {
           p_submission_id: result.submission_id,
