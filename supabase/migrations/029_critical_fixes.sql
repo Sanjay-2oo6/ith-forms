@@ -181,14 +181,13 @@ BEGIN
 
   v_token := encode(gen_random_bytes(24), 'base64url');
 
-  INSERT INTO public.submissions (form_id, reference_token, reference_id, respondent_name, respondent_email, answers, status, idempotency_key, submitted_at)
+  INSERT INTO public.submissions (form_id, reference_token, reference_id, respondent_name, respondent_email, status, idempotency_key, submitted_at)
   VALUES (
     p_form_id,
     v_token,
     'TEMP',
     COALESCE(p_name, NULL),
     COALESCE(p_email, NULL),
-    jsonb_build_array(),
     'new',
     p_idempotency_key,
     now()
@@ -203,8 +202,8 @@ BEGIN
 
   UPDATE public.submissions SET reference_id = v_ref WHERE id = v_sub_id;
 
-  INSERT INTO public.submission_answers (submission_id, question_id, value)
-  SELECT v_sub_id, (a->>'question_id')::uuid, left(a->>'value', 20000)
+  INSERT INTO public.submission_answers (submission_id, form_id, question_id, value)
+  SELECT v_sub_id, p_form_id, (a->>'question_id')::uuid, left(a->>'value', 20000)
   FROM jsonb_array_elements(p_answers) a;
 
   RETURN jsonb_build_object(

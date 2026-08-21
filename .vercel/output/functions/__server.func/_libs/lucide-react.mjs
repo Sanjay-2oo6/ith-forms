@@ -250,6 +250,21 @@ var CircleCheckBig = createLucideIcon("circle-check-big", [["path", {
 * This source code is licensed under the ISC license.
 * See the LICENSE file in the root directory of this source tree.
 */
+var CircleCheck = createLucideIcon("circle-check", [["circle", {
+	cx: "12",
+	cy: "12",
+	r: "10",
+	key: "1mglay"
+}], ["path", {
+	d: "m9 12 2 2 4-4",
+	key: "dzmm74"
+}]]);
+/**
+* @license lucide-react v0.575.0 - ISC
+*
+* This source code is licensed under the ISC license.
+* See the LICENSE file in the root directory of this source tree.
+*/
 var CopyPlus = createLucideIcon("copy-plus", [
 	["line", {
 		x1: "15",
@@ -1080,4 +1095,4 @@ var X = createLucideIcon("x", [["path", {
 	key: "d8bk6v"
 }]]);
 //#endregion
-export { FileText as A, CircleAlert as B, Mail as C, Info as D, LayoutDashboard as E, Download as F, BookOpen as G, ChevronDown as H, Database as I, ArrowLeft as K, Copy as L, EyeOff as M, ExternalLink as N, GripVertical as O, EllipsisVertical as P, CopyPlus as R, MessageCircle as S, LoaderCircle as T, Check as U, ChevronUp as V, Calendar as W, Plus as _, Trash2 as a, Moon as b, Smartphone as c, Settings as d, Send as f, RefreshCw as g, RotateCcw as h, TriangleAlert as i, Eye as j, Folder as k, Shield as l, Save as m, User as n, Sun as o, SearchX as p, Activity as q, Upload as r, Sparkles as s, X as t, Share2 as u, Pencil as v, LogOut as w, Monitor as x, Palette as y, CircleCheckBig as z };
+export { FileText as A, CircleCheckBig as B, Mail as C, Info as D, LayoutDashboard as E, Download as F, Calendar as G, ChevronUp as H, Database as I, Activity as J, BookOpen as K, Copy as L, EyeOff as M, ExternalLink as N, GripVertical as O, EllipsisVertical as P, CopyPlus as R, MessageCircle as S, LoaderCircle as T, ChevronDown as U, CircleAlert as V, Check as W, Plus as _, Trash2 as a, Moon as b, Smartphone as c, Settings as d, Send as f, RefreshCw as g, RotateCcw as h, TriangleAlert as i, Eye as j, Folder as k, Shield as l, Save as m, User as n, Sun as o, SearchX as p, ArrowLeft as q, Upload as r, Sparkles as s, X as t, Share2 as u, Pencil as v, LogOut as w, Monitor as x, Palette as y, CircleCheck as z };

@@ -1,1 +1,0 @@
-import{r as e}from"./rolldown-runtime-BHe-jwch.js";import{r as t}from"./useRouter-BbADxXyH.js";import{t as n}from"./useNavigate-CACxdwKn.js";var r=e(t());function i(){let e=n();return(0,r.useEffect)(()=>{e({to:`/admin/login`,replace:!0})},[e]),null}export{i as component};

@@ -22,7 +22,7 @@ export const Route = createFileRoute("/")({
     
     if (admin) {
       // Is admin, redirect to dashboard
-      throw redirect({ to: "/admin/dashboard" });
+      throw redirect({ to: "/dashboard" });
     } else {
       // Not admin, redirect to login
       throw redirect({ to: "/admin/login" });
