@@ -3,9 +3,9 @@
 -- 1. get_submission_by_reference() function missing or not in schema cache
 -- 2. response_count incrementing by 2 instead of 1 (duplicate logic somewhere)
 
--- ============================================================
+-- ====================================================================
 -- 1. RECREATE: get_submission_by_reference function (ensure it exists)
--- ============================================================
+-- ====================================================================
 DROP FUNCTION IF EXISTS public.get_submission_by_reference(text) CASCADE;
 
 CREATE OR REPLACE FUNCTION public.get_submission_by_reference(p_reference_id text)
@@ -89,9 +89,9 @@ GRANT EXECUTE ON FUNCTION public.get_submission_by_reference(text) TO anon, auth
 
 COMMENT ON FUNCTION public.get_submission_by_reference(text) IS 'Public function to view submission details by reference ID. Read-only access.';
 
--- ============================================================
--- 2. FIX: increment_response_count trigger function (remove duplicate logic)
--- ============================================================
+-- ==========================================================================
+-- 2. FIX: increment_response_count trigger function (remove duplicate logic) 
+-- ==========================================================================
 
 DROP TRIGGER IF EXISTS on_submission_inserted ON public.submissions;
 
@@ -125,7 +125,7 @@ UPDATE public.forms f
 SET response_count = (
   SELECT COUNT(*) FROM public.submissions s WHERE s.form_id = f.id
 );
-
+                                    
 -- ============================================================
 -- 4. VERIFY: Check response_count accuracy
 -- ============================================================
@@ -143,10 +143,10 @@ SELECT
   END as status
 FROM public.forms f
 ORDER BY f.title;
-
--- ============================================================
+                                     
+-- =============================================================
 -- 5. CHECK: Verify get_submission_by_reference exists and works
--- ============================================================
+-- =============================================================
 
 SELECT 'get_submission_by_reference function is now available' as status;
 
@@ -160,4 +160,3 @@ SELECT
     ELSE 'No submissions yet - function ready for use' 
   END as test_info
 FROM sample_submission s;
-

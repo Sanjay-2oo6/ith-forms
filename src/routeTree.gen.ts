@@ -13,6 +13,7 @@ import { Route as AdminRouteRouteImport } from './routes/_admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ViewResponseReferenceIdRouteImport } from './routes/view-response/$referenceId'
 import { Route as FormsSlugRouteImport } from './routes/forms/$slug'
+import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AdminLoginRouteImport } from './routes/admin/login'
 import { Route as AdminSystemHealthRouteImport } from './routes/_admin/system-health'
 import { Route as AdminSettingsRouteImport } from './routes/_admin/settings'
@@ -44,6 +45,11 @@ const ViewResponseReferenceIdRoute = ViewResponseReferenceIdRouteImport.update({
 const FormsSlugRoute = FormsSlugRouteImport.update({
   id: '/forms/$slug',
   path: '/forms/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
@@ -123,6 +129,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AdminSettingsRoute
   '/system-health': typeof AdminSystemHealthRoute
   '/admin/login': typeof AdminLoginRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/forms/$slug': typeof FormsSlugRoute
   '/view-response/$referenceId': typeof ViewResponseReferenceIdRoute
   '/forms/new': typeof AdminFormsNewRoute
@@ -141,6 +148,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AdminSettingsRoute
   '/system-health': typeof AdminSystemHealthRoute
   '/admin/login': typeof AdminLoginRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/forms/$slug': typeof FormsSlugRoute
   '/view-response/$referenceId': typeof ViewResponseReferenceIdRoute
   '/forms/new': typeof AdminFormsNewRoute
@@ -161,6 +169,7 @@ export interface FileRoutesById {
   '/_admin/settings': typeof AdminSettingsRoute
   '/_admin/system-health': typeof AdminSystemHealthRoute
   '/admin/login': typeof AdminLoginRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/forms/$slug': typeof FormsSlugRoute
   '/view-response/$referenceId': typeof ViewResponseReferenceIdRoute
   '/_admin/forms/new': typeof AdminFormsNewRoute
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/system-health'
     | '/admin/login'
+    | '/auth/callback'
     | '/forms/$slug'
     | '/view-response/$referenceId'
     | '/forms/new'
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/system-health'
     | '/admin/login'
+    | '/auth/callback'
     | '/forms/$slug'
     | '/view-response/$referenceId'
     | '/forms/new'
@@ -218,6 +229,7 @@ export interface FileRouteTypes {
     | '/_admin/settings'
     | '/_admin/system-health'
     | '/admin/login'
+    | '/auth/callback'
     | '/forms/$slug'
     | '/view-response/$referenceId'
     | '/_admin/forms/new'
@@ -232,6 +244,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   AdminLoginRoute: typeof AdminLoginRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   FormsSlugRoute: typeof FormsSlugRoute
   ViewResponseReferenceIdRoute: typeof ViewResponseReferenceIdRoute
 }
@@ -264,6 +277,13 @@ declare module '@tanstack/react-router' {
       path: '/forms/$slug'
       fullPath: '/forms/$slug'
       preLoaderRoute: typeof FormsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/login': {
@@ -399,6 +419,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   AdminLoginRoute: AdminLoginRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   FormsSlugRoute: FormsSlugRoute,
   ViewResponseReferenceIdRoute: ViewResponseReferenceIdRoute,
 }

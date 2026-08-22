@@ -24,10 +24,23 @@ export function SettingsTab({ form, onChange }: { form: BuilderForm; onChange: (
           <input type="datetime-local" value={toLocalDatetimeInput(form.closes_at)} onChange={e => onChange({ closes_at: e.target.value ? new Date(e.target.value).toISOString() : null })}
             className={inputCls + " h-9"} />
         </Field>
-        <Field label="Max responses">
+        <Field label="Max responses (total)">
           <input type="number" min={1} value={form.max_responses ?? ""} onChange={e => onChange({ max_responses: e.target.value ? parseInt(e.target.value) : null })}
             placeholder="Unlimited"
             className={inputCls + " h-9"} />
+          <p className="text-xs text-muted-foreground mt-1">Maximum submissions from all respondents combined</p>
+        </Field>
+        <Field label="Max responses per verified email">
+          <select value={form.responses_per_email_limit ?? ""} onChange={e => onChange({ responses_per_email_limit: e.target.value ? parseInt(e.target.value) : null })}
+            className={inputCls + " h-9"}>
+            <option value="">Unlimited</option>
+            <option value="1">1 response</option>
+            <option value="2">2 responses</option>
+            <option value="3">3 responses</option>
+            <option value="5">5 responses</option>
+            <option value="10">10 responses</option>
+          </select>
+          <p className="text-xs text-muted-foreground mt-1">Respondents must sign in with Google. Each verified email can submit up to this many times.</p>
         </Field>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={form.allow_anonymous} onChange={e => onChange({ allow_anonymous: e.target.checked })} />
