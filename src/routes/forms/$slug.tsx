@@ -144,6 +144,17 @@ function PublicForm() {
     authSession?.email
   );
 
+  // Check if user is authenticated on page load
+  // If not, trigger Google sign-in immediately
+  useEffect(() => {
+    if (authLoading) return; // Wait for auth state to load
+    
+    if (!authSession) {
+      console.log('[PublicForm] User not authenticated on page load, initiating Google sign-in');
+      handleGoogleSignIn();
+    }
+  }, [authLoading, authSession]);
+
   useEffect(() => {
     if (!slug) return;
     loadForm();
@@ -681,8 +692,11 @@ function PublicForm() {
   function renderAuthHeader() {
     if (authLoading) {
       return (
-        <div className="flex items-center justify-between bg-secondary/20 rounded-lg px-4 py-3 border border-border/40">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        <div className="flex items-center justify-center bg-secondary/20 rounded-lg px-4 py-6 border border-border/40">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Signing in with Google...</p>
+          </div>
         </div>
       );
     }
@@ -707,6 +721,7 @@ function PublicForm() {
       );
     }
 
+    // This should not be reached if auto-signin is working, but kept as fallback
     return (
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">Sign in with Google to submit this form.</p>
