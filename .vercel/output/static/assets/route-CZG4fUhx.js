@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-Bhh1vgom.js";import{t}from"./AdminShell-DteZ-Mjy.js";import{l as n}from"./index-ZNLx2zrn.js";var r=e();function i(){return(0,r.jsx)(t,{children:(0,r.jsx)(n,{})})}export{i as component};

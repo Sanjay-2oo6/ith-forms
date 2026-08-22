@@ -7,7 +7,7 @@ import { T as LoaderCircle, V as CircleAlert, j as Eye, r as Upload, t as X, w a
 import { i as stringType } from "./_libs/zod.mjs";
 import { a as fileSizeCheck, o as uuidv4, r as SubmitPayloadSchema } from "./_ssr/validation-Cb9MIurp.mjs";
 import { t as themeContainerStyle } from "./_ssr/theme-utils-CZ5WP4IV.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/_slug-DMZoE8xO.js
+//#region node_modules/.nitro/vite/services/ssr/assets/_slug-3q-zW9vI.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 function useAuth() {
@@ -175,6 +175,7 @@ function parseGrid(v) {
 	}
 }
 function readPreviewDraft(key, formId) {
+	if (typeof window === "undefined") return null;
 	try {
 		const raw = sessionStorage.getItem(key);
 		if (!raw) return null;
@@ -244,7 +245,7 @@ function PublicForm() {
 		setFormState("loading");
 		const authorized = isPreview ? await isAdminSession() : false;
 		setPreviewAuthorized(authorized);
-		const { data: f, error } = await supabase.from("forms").select("id,title,description,status,opens_at,closes_at,max_responses,response_count,allow_anonymous,consent_text,confirmation_title,confirmation_message").eq("slug", slug).is("deleted_at", null).maybeSingle();
+		const { data: f, error } = await supabase.from("forms").select("id,title,description,status,opens_at,closes_at,max_responses,response_count,allow_anonymous,consent_text,confirmation_title,confirmation_message,responses_per_email_limit").eq("slug", slug).is("deleted_at", null).maybeSingle();
 		if (error || !f) {
 			setFormState("unavailable");
 			return;
@@ -476,8 +477,14 @@ function PublicForm() {
 		}
 		submitGuard.current = true;
 		setFormState("submitting");
-		const respondentEmail = authSession?.email || null;
-		const respondentName = authSession?.name || null;
+		if (!authSession || !authSession.email) {
+			setFormState("ready");
+			submitGuard.current = false;
+			setErrors({ __form: "Authentication required. Please sign in with Google first." });
+			return;
+		}
+		const respondentEmail = authSession.email;
+		const respondentName = authSession.name || null;
 		const answerPayload = questions.filter((q) => ![
 			"section_heading",
 			"information_paragraph",

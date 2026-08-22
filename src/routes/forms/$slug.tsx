@@ -19,6 +19,7 @@ type Form = {
   opens_at: string | null; closes_at: string | null; max_responses: number | null;
   response_count: number; allow_anonymous: boolean; consent_text: string | null;
   confirmation_title: string | null; confirmation_message: string | null;
+  responses_per_email_limit: number | null;
 };
 type Section = { id: string; title: string; description: string | null; position: number };
 type QConfig = {
