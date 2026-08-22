@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { IthLogo, useBranding } from "@/lib/ith-brand";
 import { SubmitPayloadSchema, uuidv4, fileSizeCheck } from "@/lib/validation";
 import { themeContainerStyle, type FormTheme } from "@/lib/theme-utils";
-import { Loader2, Upload, X, AlertCircle, Eye, CheckCircle2 } from "lucide-react";
+import { useAuth, useAuthSubmissionStatus } from "@/lib/use-auth";
+import { Loader2, Upload, X, AlertCircle, Eye, CheckCircle2, LogOut } from "lucide-react";
 import { z } from "zod";
 
 export const Route = createFileRoute("/forms/$slug")({
@@ -116,14 +117,7 @@ function readPreviewDraft(key: string, formId: string): PreviewDraft | null {
 function PublicForm() {
   const { pathname } = useLocation();
   const slug = pathname.replace(/^\/forms\//, "").replace(/\.html$/, "");
-  // Route is ssr:false, so window is always available here.
   const searchStr = typeof window !== "undefined" ? window.location.search : "";
-  // Preview mode (?preview=1): used by the builder's device-preview iframe.
-  // The param alone does NOTHING — every preview affordance (draft rendering,
-  // gate skipping, validation-free navigation, banner) additionally requires
-  // a verified ACTIVE ADMIN session, checked server-side via RLS-readable
-  // admin_users. A public visitor adding ?preview=1 gets the normal form
-  // with full validation.
   const isPreview = new URLSearchParams(searchStr).has("preview");
   const previewDraftKey = new URLSearchParams(searchStr).get("draft");
 
@@ -139,17 +133,63 @@ function PublicForm() {
   const [uploadWarnings, setUploadWarnings] = useState<string[]>([]);
   const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
   const [consentAgreed, setConsentAgreed] = useState(false);
-  // True only when ?preview=1 AND the session belongs to an active admin.
   const [previewAuthorized, setPreviewAuthorized] = useState(false);
   const submitGuard = useRef(false);
-  // One idempotency key per page load — reused across retries, regenerated on reload.
-  // uuidv4() works even over plain HTTP (LAN), where crypto.randomUUID is absent.
   const idempotencyKey = useRef<string>(uuidv4());
+
+  // Google OAuth auth hooks
+  const { session: authSession, isLoading: authLoading, signOut: handleSignOut } = useAuth();
+  const { status: submissionStatus, isLoading: statusLoading } = useAuthSubmissionStatus(
+    form?.id,
+    authSession?.email
+  );
+
+  // Check if user is authenticated on page load
+  // If not, trigger Google sign-in immediately
+  useEffect(() => {
+    if (authLoading) return; // Wait for auth state to load
+    
+    if (!authSession) {
+      console.log('[PublicForm] User not authenticated on page load, initiating Google sign-in');
+      handleGoogleSignIn();
+    }
+  }, [authLoading, authSession]);
 
   useEffect(() => {
     if (!slug) return;
     loadForm();
   }, [slug]);
+
+  // Generate Google OAuth redirect URL (not used currently, using signInWithOAuth instead)
+  // Kept for reference if direct OAuth flow is needed in the future
+  // function getGoogleOAuthUrl() {
+  //   const params = new URLSearchParams({
+  //     client_id: import.meta.env.VITE_SUPABASE_CLIENT_ID || '',
+  //     redirect_uri: `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback?slug=${slug}`,
+  //     response_type: 'code',
+  //     scope: 'openid email profile',
+  //     access_type: 'online',
+  //   });
+  //   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  // }
+
+  // Sign in with Google
+  async function handleGoogleSignIn() {
+    try {
+      console.log('[PublicForm] Initiating Google sign-in');
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback?slug=${slug}`,
+        },
+      });
+
+      console.log('[PublicForm] Google sign-in initiated');
+    } catch (error) {
+      console.error('[PublicForm] Unexpected error during sign-in:', error);
+      setErrors({ __form: 'An unexpected error occurred. Please try again.' });
+    }
+  }
 
   // Preview authorization: an ACTIVE admin session (RLS lets a user read only
   // their own admin_users row, so this cannot be spoofed client-side).
@@ -402,11 +442,9 @@ function PublicForm() {
     submitGuard.current = true;
     setFormState("submitting");
 
-    // Extract respondent name/email from typed questions
-    const nameQ = questions.find(q => q.type === "name");
-    const emailQ = questions.find(q => q.type === "email");
-    const respondentName = nameQ ? ((answers[nameQ.id] as string) ?? null) : null;
-    const respondentEmail = emailQ ? ((answers[emailQ.id] as string) ?? null) : null;
+    // Use email from Google OAuth (verified), not from form input
+    const respondentEmail = authSession?.email || null;
+    const respondentName = authSession?.name || null;
 
     // Build the answers payload for the RPC (file and display types excluded)
     const answerPayload = questions
@@ -448,6 +486,7 @@ function PublicForm() {
         msg.includes("form_not_open")    ? "This form is not open yet." :
         msg.includes("form_closed")      ? "This form is no longer accepting responses." :
         msg.includes("limit_reached")    ? "This form has reached its response limit. Please contact the organiser." :
+        msg.includes("email_limit_reached") ? "You have already submitted this form the maximum number of times." :
         msg.includes("form_unavailable") ? "This form is not available." :
         msg.includes("invalid_payload")  ? "Some answers couldn't be processed. Please review and try again." :
         msg.includes("invalid_scale_value") || msg.includes("scale_value_out_of_range") 
@@ -649,15 +688,143 @@ function PublicForm() {
 
   if (!form) return null;
 
+  // Render auth header
+  function renderAuthHeader() {
+    if (authLoading) {
+      return (
+        <div className="flex items-center justify-center bg-secondary/20 rounded-lg px-4 py-6 border border-border/40">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Signing in with Google...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (authSession) {
+      return (
+        <div className="flex items-center justify-between bg-primary/10 rounded-lg px-4 py-3 border border-primary/30">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">
+              Signed in as <span className="font-semibold">{authSession.name}</span> ({authSession.email})
+            </span>
+          </div>
+          <button
+            onClick={handleSignOut}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <LogOut className="h-3 w-3" />
+            Sign out
+          </button>
+        </div>
+      );
+    }
+
+    // This should not be reached if auto-signin is working, but kept as fallback
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">Sign in with Google to submit this form.</p>
+        <button
+          onClick={handleGoogleSignIn}
+          className="w-full h-11 rounded-xl border border-border bg-background hover:bg-secondary text-foreground font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
+        >
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="10" />
+          </svg>
+          Sign in with Google
+        </button>
+      </div>
+    );
+  }
+
+  // Render submission status
+  function renderSubmissionStatus() {
+    if (!authSession) return null;
+
+    if (statusLoading) {
+      return (
+        <div className="flex items-center gap-2 rounded-lg bg-secondary/20 px-4 py-3 border border-border/40">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Checking submission status...</span>
+        </div>
+      );
+    }
+
+    if (submissionStatus && submissionStatus.submission_count > 0) {
+      const { submission_count, limit, can_submit } = submissionStatus;
+      
+      if (!can_submit) {
+        return (
+          <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-semibold text-sm text-amber-700">You've reached the limit</h3>
+                <p className="text-xs text-amber-600 mt-1">
+                  You have submitted this form {submission_count} {limit && limit === 1 ? 'time' : 'times'}{limit ? ` of ${limit}` : ''}.
+                  No more submissions are allowed.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="rounded-lg bg-blue-500/10 border border-blue-500/30 p-4">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-sm text-blue-700">You've already submitted this form</h3>
+              <p className="text-xs text-blue-600 mt-1">
+                You have submitted {submission_count} {limit && limit === 1 ? 'time' : 'times'}{limit ? ` of ${limit}` : ''}.
+                {can_submit && limit ? ' You can submit again.' : ''}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  }
+
   return (
     <Shell form={form} theme={theme} bgUrl={bgUrl}>
-      {previewAuthorized && (
-        <div className="flex items-center gap-2 rounded-lg bg-primary/10 border border-primary/30 p-3 text-sm text-primary">
-          <Eye className="h-4 w-4 shrink-0" />
-          Preview mode — this is how respondents will see the form. Navigate freely; submissions are disabled.
+      {/* Auth Header */}
+      <div className="mb-6">
+        {renderAuthHeader()}
+      </div>
+
+      {/* Submission Status */}
+      {authSession && (
+        <div className="mb-6">
+          {renderSubmissionStatus()}
         </div>
       )}
-      <form onSubmit={handleSubmit} onKeyDown={preventImplicitSubmit} noValidate className="space-y-6">
+
+      {/* Block form if limit reached */}
+      {authSession && submissionStatus && !submissionStatus.can_submit && (
+        <div className="rounded-lg bg-background border-2 border-border/60 p-8 text-center">
+          <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">No more submissions allowed</h2>
+          <p className="text-muted-foreground text-sm">
+            You have reached the maximum number of submissions for this form.
+          </p>
+        </div>
+      )}
+
+      {/* Show form only if authenticated with Google and not limit-reached */}
+      {authSession && submissionStatus && submissionStatus.can_submit && (
+        <>
+          {previewAuthorized && (
+            <div className="flex items-center gap-2 rounded-lg bg-primary/10 border border-primary/30 p-3 text-sm text-primary">
+              <Eye className="h-4 w-4 shrink-0" />
+              Preview mode — this is how respondents will see the form. Navigate freely; submissions are disabled.
+            </div>
+          )}
+          <form onSubmit={handleSubmit} onKeyDown={preventImplicitSubmit} noValidate className="space-y-6">
         {errors.__form && (
           <div data-error className="flex items-center gap-2 rounded-lg bg-destructive/10 border border-destructive/30 p-3 text-sm text-destructive">
             <AlertCircle className="h-4 w-4 shrink-0" />{errors.__form}
@@ -774,6 +941,20 @@ function PublicForm() {
           </button>
         )}
       </form>
+        </>
+      )}
+
+      {/* Show message if not authenticated */}
+      {!authSession && !statusLoading && (
+        <div className="rounded-lg bg-blue-500/10 border border-blue-500/30 p-6 text-center">
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-blue-700">Ready to submit?</h3>
+            <p className="text-sm text-blue-600">
+              Please sign in with Google above to fill out and submit this form.
+            </p>
+          </div>
+        </div>
+      )}
     </Shell>
   );
 }

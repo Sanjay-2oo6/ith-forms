@@ -50,6 +50,7 @@ export type BuilderForm = {
   opens_at: string | null;
   closes_at: string | null;
   max_responses: number | null;
+  responses_per_email_limit: number | null;
   allow_anonymous: boolean;
   consent_text: string | null;
   confirmation_title: string | null;
