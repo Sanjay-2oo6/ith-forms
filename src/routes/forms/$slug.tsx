@@ -800,8 +800,8 @@ function PublicForm() {
         </div>
       )}
 
-      {/* Show form only if not limit-reached and authenticated (if required) */}
-      {(!authSession || !submissionStatus || submissionStatus.can_submit) && (
+      {/* Show form only if authenticated with Google and not limit-reached */}
+      {authSession && submissionStatus && submissionStatus.can_submit && (
         <>
           {previewAuthorized && (
             <div className="flex items-center gap-2 rounded-lg bg-primary/10 border border-primary/30 p-3 text-sm text-primary">
@@ -927,6 +927,18 @@ function PublicForm() {
         )}
       </form>
         </>
+      )}
+
+      {/* Show message if not authenticated */}
+      {!authSession && !statusLoading && (
+        <div className="rounded-lg bg-blue-500/10 border border-blue-500/30 p-6 text-center">
+          <div className="space-y-3">
+            <h3 className="text-lg font-semibold text-blue-700">Ready to submit?</h3>
+            <p className="text-sm text-blue-600">
+              Please sign in with Google above to fill out and submit this form.
+            </p>
+          </div>
+        </div>
       )}
     </Shell>
   );
