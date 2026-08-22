@@ -8,13 +8,16 @@ export default defineConfig({
     server: { entry: "server" },
   },
 
-  // Deploy target. Defaults to the Vercel preset, but Nitro's own preset
-  // resolution only falls back to NITRO_PRESET when `preset` is left
-  // unset here — an explicit value in this config always wins. Reading
-  // process.env.NITRO_PRESET explicitly lets netlify.toml's
-  // NITRO_PRESET=netlify actually take effect on Netlify builds.
+  // Deploy target. Platform detection order:
+  // 1. Explicit NITRO_PRESET env var (set by netlify.toml, render.yaml, or manual override)
+  // 2. Detect platform from env vars (Netlify, Vercel, Render, etc.)
+  // 3. Default to vercel for local dev
   nitro: {
-    preset: process.env.NITRO_PRESET || "vercel",
+    preset: process.env.NITRO_PRESET || 
+            (process.env.NETLIFY === "true" ? "netlify" : undefined) ||
+            (process.env.VERCEL ? "vercel" : undefined) ||
+            (process.env.RENDER ? "node-server" : undefined) ||
+            "vercel",
   },
 
   // @ts-expect-error — server option is supported at runtime by lovable config
