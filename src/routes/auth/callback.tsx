@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,12 +12,15 @@ import { supabase } from '@/integrations/supabase/client';
  * 2. Extracts email + name from user metadata
  * 3. Stores auth state in sessionStorage
  * 4. Redirects back to the form (preserving slug)
+ * 
+ * Must be client-only (ssr: false) because it uses browser APIs (sessionStorage)
+ * and client-side routing (useNavigate).
  */
 
-export const Route = {
-  path: '/auth/callback',
+export const Route = createFileRoute('/auth/callback')({
+  ssr: false,
   component: AuthCallback,
-};
+});
 
 type SearchParams = {
   slug?: string;
