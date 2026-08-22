@@ -101,6 +101,7 @@ type PreviewDraft = {
 };
 
 function readPreviewDraft(key: string, formId: string): PreviewDraft | null {
+  if (typeof window === "undefined") return null;
   try {
     const raw = sessionStorage.getItem(key);
     if (!raw) return null;
@@ -214,7 +215,7 @@ function PublicForm() {
 
     const { data: f, error } = await supabase
       .from("forms")
-      .select("id,title,description,status,opens_at,closes_at,max_responses,response_count,allow_anonymous,consent_text,confirmation_title,confirmation_message")
+      .select("id,title,description,status,opens_at,closes_at,max_responses,response_count,allow_anonymous,consent_text,confirmation_title,confirmation_message,responses_per_email_limit")
       .eq("slug", slug)
       .is("deleted_at", null)
       .maybeSingle();
@@ -442,9 +443,17 @@ function PublicForm() {
     submitGuard.current = true;
     setFormState("submitting");
 
+    // Verify authentication is present
+    if (!authSession || !authSession.email) {
+      setFormState("ready");
+      submitGuard.current = false;
+      setErrors({ __form: 'Authentication required. Please sign in with Google first.' });
+      return;
+    }
+
     // Use email from Google OAuth (verified), not from form input
-    const respondentEmail = authSession?.email || null;
-    const respondentName = authSession?.name || null;
+    const respondentEmail = authSession.email;
+    const respondentName = authSession.name || null;
 
     // Build the answers payload for the RPC (file and display types excluded)
     const answerPayload = questions
