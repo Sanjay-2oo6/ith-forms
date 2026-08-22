@@ -9,6 +9,7 @@ node_modules/
 # Build output
 .output/
 .netlify/
+.vercel/
 .wrangler/
 dist/
 .nitro/
