@@ -178,12 +178,18 @@ function PublicForm() {
   // Sign in with Google
   async function handleGoogleSignIn() {
     try {
-      console.log('[PublicForm] Initiating Google sign-in');
+      console.log('[PublicForm] Initiating Google sign-in with slug:', slug);
+      
+      // Store slug in sessionStorage so callback can retrieve it
+      if (typeof window !== "undefined" && slug) {
+        sessionStorage.setItem('oauth_form_slug', slug);
+        console.log('[PublicForm] Stored slug in sessionStorage:', slug);
+      }
+      
+      // Don't pass redirectTo - let Supabase use the configured redirect URL
+      // This ensures it uses https://ith-forms-six.vercel.app/auth/callback (from Supabase URL config)
       await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: `${typeof window !== "undefined" ? window.location.origin : ""}/auth/callback?slug=${slug}`,
-        },
       });
 
       console.log('[PublicForm] Google sign-in initiated');

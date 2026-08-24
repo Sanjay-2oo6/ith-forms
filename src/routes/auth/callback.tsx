@@ -31,20 +31,24 @@ function AuthCallback() {
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as SearchParams;
   
-  // Try to get slug from multiple sources:
-  // 1. Query param: ?slug=...
-  // 2. Hash param after code/state: #slug=...
-  // 3. From redirectTo query param
   const getSlug = () => {
+    // First try sessionStorage (set by form before OAuth)
+    if (typeof window !== "undefined") {
+      const stored = sessionStorage.getItem('oauth_form_slug');
+      if (stored) {
+        console.log('[auth/callback] Got slug from sessionStorage:', stored);
+        return stored;
+      }
+    }
+    
+    // Fallback: try query/hash params
     if (search.slug) return search.slug;
     
-    // Check hash for slug parameter
     if (typeof window !== "undefined") {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       if (hashParams.has("slug")) return hashParams.get("slug") || "";
     }
     
-    // Extract from redirectTo
     if (search.redirectTo?.includes("/forms/")) {
       return search.redirectTo.split("/forms/")[1] || "";
     }
