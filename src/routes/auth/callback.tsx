@@ -30,15 +30,40 @@ type SearchParams = {
 function AuthCallback() {
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as SearchParams;
-  const slug = search.slug || search.redirectTo?.split('/forms/')[1] || '';
+  
+  // Try to get slug from multiple sources:
+  // 1. Query param: ?slug=...
+  // 2. Hash param after code/state: #slug=...
+  // 3. From redirectTo query param
+  const getSlug = () => {
+    if (search.slug) return search.slug;
+    
+    // Check hash for slug parameter
+    if (typeof window !== "undefined") {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      if (hashParams.has("slug")) return hashParams.get("slug") || "";
+    }
+    
+    // Extract from redirectTo
+    if (search.redirectTo?.includes("/forms/")) {
+      return search.redirectTo.split("/forms/")[1] || "";
+    }
+    
+    return "";
+  };
+  
+  const slug = getSlug();
 
   useEffect(() => {
     handleCallback();
-  }, []);
+  }, [slug]);
 
   async function handleCallback() {
     try {
       console.log('[auth/callback] Starting OAuth callback handler');
+      console.log('[auth/callback] URL:', typeof window !== "undefined" ? window.location.href : "N/A");
+      console.log('[auth/callback] Search params:', search);
+      console.log('[auth/callback] Extracted slug:', slug);
 
       // Get the current session (Supabase automatically exchanges the code)
       const { data, error } = await supabase.auth.getSession();

@@ -118,7 +118,10 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.get_or_create_admin() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.get_or_create_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_or_create_admin() TO anon, authenticated;
+
+-- Allow authenticated users to insert into admin_users
+GRANT INSERT, UPDATE ON public.admin_users TO authenticated;
 
 -- ─── 3. Verification ────────────────────────────────────────────────────────
 -- After running this migration, test:
