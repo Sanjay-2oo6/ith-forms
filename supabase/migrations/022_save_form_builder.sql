@@ -86,11 +86,24 @@ BEGIN
   SET
     title = v_title,
     description = nullif(p_form->>'description', ''),
-    opens_at = nullif(p_form->>'opens_at', '')::timestamptz,
-    closes_at = nullif(p_form->>'closes_at', '')::timestamptz,
+    opens_at = CASE
+      WHEN nullif(p_form->>'opens_at', '') IS NOT NULL
+        THEN (p_form->>'opens_at')::timestamptz
+      ELSE NULL
+    END,
+    closes_at = CASE
+      WHEN nullif(p_form->>'closes_at', '') IS NOT NULL
+        THEN (p_form->>'closes_at')::timestamptz
+      ELSE NULL
+    END,
     max_responses = CASE
       WHEN p_form ? 'max_responses' AND nullif(p_form->>'max_responses', '') IS NOT NULL
         THEN (p_form->>'max_responses')::integer
+      ELSE NULL
+    END,
+    responses_per_email_limit = CASE
+      WHEN p_form ? 'responses_per_email_limit' AND nullif(p_form->>'responses_per_email_limit', '') IS NOT NULL
+        THEN (p_form->>'responses_per_email_limit')::integer
       ELSE NULL
     END,
     allow_anonymous = coalesce((p_form->>'allow_anonymous')::boolean, true),

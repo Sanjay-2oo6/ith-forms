@@ -561,6 +561,7 @@ function buildFormPayload(form: Form) {
     consent_text: form.consent_text,
     confirmation_title: form.confirmation_title,
     confirmation_message: form.confirmation_message,
+    responses_per_email_limit: form.responses_per_email_limit,
   };
 }
 
