@@ -186,10 +186,18 @@ function PublicForm() {
         console.log('[PublicForm] Stored slug in sessionStorage:', slug);
       }
       
-      // Don't pass redirectTo - let Supabase use the configured redirect URL
-      // This ensures it uses https://ith-forms-six.vercel.app/auth/callback (from Supabase URL config)
+      // Explicitly pass the Vercel redirect URL
+      // This ensures Supabase redirects to Vercel, not localhost
+      const vercelUrl = typeof window !== "undefined" ? window.location.origin : "https://ith-forms-six.vercel.app";
+      const redirectUrl = `${vercelUrl}/auth/callback`;
+      
+      console.log('[PublicForm] Using redirect URL:', redirectUrl);
+      
       await supabase.auth.signInWithOAuth({
         provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+        },
       });
 
       console.log('[PublicForm] Google sign-in initiated');
