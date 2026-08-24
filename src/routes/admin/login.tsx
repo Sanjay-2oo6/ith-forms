@@ -59,29 +59,33 @@ function LoginPage() {
       setAttempts(0);
       setLockoutUntil(null);
       
-      // Verify admin record
+      // Verify admin record exists
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: admin } = await supabase
-          .from("admin_users")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("is_active", true)
-          .maybeSingle();
-        if (!admin) {
-          await supabase.auth.signOut();
-          setError("Invalid credentials. Please try again.");
-          return;
-        }
-        
-        // Log successful login to audit log
-        await supabase.from("audit_logs").insert({
-          action: "admin.login",
-          entity: "auth",
-          entity_id: user.id,
-          metadata: { email: user.email },
-        });
+      if (!user) {
+        setError("Invalid credentials. Please try again.");
+        return;
       }
+
+      // Auto-provision admin record if it doesn't exist
+      const { data: adminResult, error: provisionError } = await supabase.rpc(
+        "get_or_create_admin"
+      );
+
+      if (provisionError || !adminResult?.is_admin) {
+        console.error("Admin provisioning failed:", provisionError);
+        await supabase.auth.signOut();
+        setError("You do not have admin access.");
+        return;
+      }
+      
+      // Log successful login to audit log
+      await supabase.from("audit_logs").insert({
+        action: "admin.login",
+        entity: "auth",
+        entity_id: user.id,
+        metadata: { email: user.email },
+      });
+
       navigate({ to: "/dashboard" });
     } finally {
       setLoading(false);

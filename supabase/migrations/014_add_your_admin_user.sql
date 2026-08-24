@@ -24,8 +24,8 @@
 
 INSERT INTO public.admin_users (user_id, email, is_active)
 VALUES (
-  '7f16dfd0-b14c-4931-9184-be69c65da378',  -- 👈 Replace with your user_id
-  'siddharthaimmadi@gmail.com',             -- 👈 Replace with your email
+  'd2728dd0-ab98-49a3-8330-9be77fdd3574',  -- ✅ Admin user ID
+  'innotechhub.edu@gmail.com',             -- ✅ Admin email
   true
 )
 ON CONFLICT (user_id) DO UPDATE SET
