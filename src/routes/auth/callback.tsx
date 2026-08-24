@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -30,36 +30,26 @@ type SearchParams = {
 function AuthCallback() {
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as SearchParams;
-  
-  const getSlug = () => {
-    // First try sessionStorage (set by form before OAuth)
+  const [slug, setSlug] = useState<string>("");
+
+  useEffect(() => {
+    // On mount, extract slug from sessionStorage
     if (typeof window !== "undefined") {
       const stored = sessionStorage.getItem('oauth_form_slug');
       if (stored) {
-        console.log('[auth/callback] Got slug from sessionStorage:', stored);
-        return stored;
+        console.log('[auth/callback] Retrieved slug from sessionStorage:', stored);
+        setSlug(stored);
+      } else {
+        console.log('[auth/callback] No slug in sessionStorage, slug is empty');
+        setSlug("");
       }
     }
-    
-    // Fallback: try query/hash params
-    if (search.slug) return search.slug;
-    
-    if (typeof window !== "undefined") {
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      if (hashParams.has("slug")) return hashParams.get("slug") || "";
-    }
-    
-    if (search.redirectTo?.includes("/forms/")) {
-      return search.redirectTo.split("/forms/")[1] || "";
-    }
-    
-    return "";
-  };
-  
-  const slug = getSlug();
+  }, []);
 
   useEffect(() => {
-    handleCallback();
+    if (slug !== undefined) {
+      handleCallback();
+    }
   }, [slug]);
 
   async function handleCallback() {
