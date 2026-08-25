@@ -11,11 +11,6 @@ import { z } from "zod";
 
 export const Route = createFileRoute("/forms/$slug")({
   ssr: false,
-  beforeLoad: async () => {
-    // Don't redirect authenticated users here.
-    // Public form route allows both authenticated and unauthenticated users.
-    // Authentication check happens inside the component.
-  },
   component: PublicForm,
 });
 
