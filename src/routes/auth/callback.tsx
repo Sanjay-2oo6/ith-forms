@@ -115,6 +115,8 @@ function AuthCallback() {
     // Redirect to form if slug is available, otherwise to home
     if (slug && slug.trim()) {
       console.log('[auth/callback] Redirecting to form:', slug);
+      // Clear the stored slug since we're using it now
+      sessionStorage.removeItem('oauth_form_slug');
       navigate({ to: `/forms/${slug}` });
     } else {
       console.log('[auth/callback] No slug found, redirecting to home');
