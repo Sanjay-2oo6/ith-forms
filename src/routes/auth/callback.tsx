@@ -117,10 +117,11 @@ function AuthCallback() {
       console.log('[auth/callback] Redirecting to form:', slug);
       // Clear the stored slug since we're using it now
       sessionStorage.removeItem('oauth_form_slug');
-      navigate({ to: `/forms/${slug}` });
+      // Use replace instead of navigate to avoid history issues
+      window.location.href = `/forms/${slug}`;
     } else {
       console.log('[auth/callback] No slug found, redirecting to home');
-      navigate({ to: '/' });
+      window.location.href = '/';
     }
   }
 
