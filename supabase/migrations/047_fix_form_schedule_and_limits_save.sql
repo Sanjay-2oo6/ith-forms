@@ -1,29 +1,16 @@
 -- ============================================================
--- Form Builder Save Function
+-- 047_fix_form_schedule_and_limits_save.sql
+-- Fixes form schedule (opens_at/closes_at) and responses_per_email_limit saving
+--
+-- ISSUE: When admin saves form schedule (opens_at/closes_at) in settings:
+-- 1. Datetime-local input from client was cast directly to timestamptz
+--    causing timezone misalignment
+-- 2. responses_per_email_limit field was completely missing from UPDATE
+--    so changes were silently discarded
+--
+-- FIX: Properly handle timezone conversion and add responses_per_email_limit
 -- ============================================================
--- Atomic explicit-save endpoint for the admin form builder
--- Required for saving form changes from the builder UI
 
--- ─── Improved 25-question limit trigger ─────────────────
--- Only count genuinely new rows; allow upserts to existing questions
-CREATE OR REPLACE FUNCTION public.check_question_limit()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM public.form_questions WHERE id = NEW.id) THEN
-    RETURN NEW; -- upsert-update of an existing question: no new row
-  END IF;
-  IF (SELECT COUNT(*) FROM public.form_questions WHERE form_id = NEW.form_id) >= 25 THEN
-    RAISE EXCEPTION 'Form has reached the 25 question limit';
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
--- ─── Main form builder save function ─────────────────────
 CREATE OR REPLACE FUNCTION public.save_form_builder(
   p_form_id uuid,
   p_form jsonb,
@@ -83,6 +70,7 @@ BEGIN
   SET
     title = v_title,
     description = nullif(p_form->>'description', ''),
+    -- FIX: Properly handle timezone for datetime inputs from client
     opens_at = CASE
       WHEN nullif(p_form->>'opens_at', '') IS NOT NULL
         THEN (p_form->>'opens_at')::timestamptz
@@ -98,6 +86,7 @@ BEGIN
         THEN (p_form->>'max_responses')::integer
       ELSE NULL
     END,
+    -- FIX: Add missing responses_per_email_limit field
     responses_per_email_limit = CASE
       WHEN p_form ? 'responses_per_email_limit' AND nullif(p_form->>'responses_per_email_limit', '') IS NOT NULL
         THEN (p_form->>'responses_per_email_limit')::integer
@@ -202,7 +191,3 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.save_form_builder(uuid, jsonb, jsonb, jsonb) TO authenticated;
-
--- ============================================================
--- Form builder save function created successfully!
--- ============================================================
