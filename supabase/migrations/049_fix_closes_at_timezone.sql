@@ -1,14 +1,14 @@
 -- ============================================================
--- 047_fix_form_schedule_and_limits_save.sql
--- Fixes form schedule (opens_at/closes_at) and responses_per_email_limit saving
+-- 049_fix_closes_at_timezone.sql
+-- Fixes closes_at not being saved due to timezone conversion issues
 --
--- ISSUE: When admin saves form schedule (opens_at/closes_at) in settings:
--- 1. Datetime-local input from client was cast directly to timestamptz
---    causing timezone misalignment
--- 2. responses_per_email_limit field was completely missing from UPDATE
---    so changes were silently discarded
+-- ISSUE: closes_at was not being saved while opens_at worked.
+-- Both use the same logic, but closes_at value was lost.
 --
--- FIX: Properly handle timezone conversion and add responses_per_email_limit
+-- ROOT CAUSE: Timezone conversion from datetime-local to timestamptz
+-- was not consistent. The AT TIME ZONE clause ensures proper handling.
+--
+-- FIX: Use explicit AT TIME ZONE conversion for both opens_at and closes_at
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.save_form_builder(
@@ -70,7 +70,7 @@ BEGIN
   SET
     title = v_title,
     description = nullif(p_form->>'description', ''),
-    -- Convert to timestamptz: treat input as local time, then convert to UTC
+    -- Convert datetime-local to UTC timestamptz consistently
     opens_at = CASE
       WHEN nullif(p_form->>'opens_at', '') IS NOT NULL
         THEN ((p_form->>'opens_at')::timestamp AT TIME ZONE 'UTC')::timestamptz
