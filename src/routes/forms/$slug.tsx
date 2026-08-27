@@ -625,6 +625,13 @@ function PublicForm() {
   if (formState === "done" && form) return (
     <Shell form={form} theme={theme} bgUrl={bgUrl}>
       <div className={`rounded-2xl border p-10 ${bgUrl ? "backdrop-blur-lg bg-card/75 border-white/20 shadow-xl" : "border-border/60 bg-card"}`}>
+        {/* Form context */}
+        <div className="text-center mb-8 pb-8 border-b border-border/40">
+          <p className="text-xs text-muted-foreground mb-1">Submission for</p>
+          <h1 className="text-3xl font-bold mb-2">{form.title}</h1>
+          {form.description && <p className="text-sm text-muted-foreground">{form.description}</p>}
+        </div>
+
         {/* Success message & Reference ID */}
         <div className="text-center mb-8">
           <div className="text-4xl mb-4">✅</div>
