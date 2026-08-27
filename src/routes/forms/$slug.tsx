@@ -196,10 +196,9 @@ function PublicForm() {
         console.log('[PublicForm] Stored slug in sessionStorage:', slug);
       }
       
-      // Explicitly pass the Vercel redirect URL
-      // This ensures Supabase redirects to Vercel, not localhost
-      const vercelUrl = typeof window !== "undefined" ? window.location.origin : "https://ith-forms-six.vercel.app";
-      const redirectUrl = `${vercelUrl}/auth/callback`;
+      // Use current origin for OAuth callback - works for custom domain and Vercel
+      const currentOrigin = typeof window !== "undefined" ? window.location.origin : "";
+      const redirectUrl = `${currentOrigin}/auth/callback`;
       
       console.log('[PublicForm] Using redirect URL:', redirectUrl);
       
