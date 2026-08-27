@@ -120,8 +120,10 @@ function PublicForm() {
   const { pathname } = useLocation();
   const slug = pathname.replace(/^\/forms\//, "").replace(/\.html$/, "");
   const searchStr = typeof window !== "undefined" ? window.location.search : "";
-  const isPreview = new URLSearchParams(searchStr).has("preview");
-  const previewDraftKey = new URLSearchParams(searchStr).get("draft");
+  const urlParams = new URLSearchParams(searchStr);
+  const isPreview = urlParams.has("preview");
+  const previewDraftKey = urlParams.get("draft");
+  const submittedRefId = urlParams.get("submitted");  // Check if this is a thank you page view
 
   const [formState, setFormState] = useState<FormState>("loading");
   const [form, setForm] = useState<Form | null>(null);
@@ -138,6 +140,14 @@ function PublicForm() {
   const [previewAuthorized, setPreviewAuthorized] = useState(false);
   const submitGuard = useRef(false);
   const idempotencyKey = useRef<string>(uuidv4());
+
+  // If page loaded with ?submitted=REF_ID, show thank you page
+  useEffect(() => {
+    if (submittedRefId) {
+      setReferenceId(submittedRefId);
+      setFormState("done");
+    }
+  }, [submittedRefId]);
 
   // Google OAuth auth hooks
   const { session: authSession, isLoading: authLoading, signOut: handleSignOut } = useAuth();
@@ -596,6 +606,14 @@ function PublicForm() {
     setUploadWarnings(failedUploads);
     setConfirmEmail(respondentEmail);
     setReferenceId(result.reference_id);
+    
+    // Persist thank you page view by updating URL with submitted reference ID
+    // So that if user refreshes, they stay on thank you page instead of reloading form
+    if (typeof window !== "undefined") {
+      const newUrl = `${window.location.pathname}?submitted=${result.reference_id}`;
+      window.history.replaceState({ submitted: result.reference_id }, '', newUrl);
+    }
+    
     setFormState("done");
   }
 
