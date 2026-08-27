@@ -22,6 +22,19 @@ export function SettingsTab({ form, onChange }: { form: BuilderForm; onChange: (
   return (
     <div className="max-w-xl space-y-5">
       <div className="rounded-xl border border-border/60 bg-card p-5 space-y-4">
+        <h2 className="font-semibold">Form Details</h2>
+        <Field label="Title">
+          <input value={form.title ?? ""} onChange={e => onChange({ title: e.target.value })}
+            placeholder="Form title" className={inputCls + " h-9"} />
+        </Field>
+        <Field label="Description">
+          <textarea value={form.description ?? ""} onChange={e => onChange({ description: e.target.value || null })}
+            rows={3} placeholder="Brief description of the form (shown below the title)"
+            className={textareaCls} />
+        </Field>
+      </div>
+
+      <div className="rounded-xl border border-border/60 bg-card p-5 space-y-4">
         <h2 className="font-semibold">Schedule & Limits</h2>
         <Field label="Opens at">
           <input type="datetime-local" value={toLocalDatetimeInput(form.opens_at)} onChange={e => onChange({ opens_at: e.target.value ? new Date(e.target.value).toISOString() : null })}
