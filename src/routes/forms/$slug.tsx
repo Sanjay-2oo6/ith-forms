@@ -1040,7 +1040,6 @@ function Shell({ children, form, theme, bgUrl }: {
           {form && (
             <div>
               <h1 className="text-3xl font-bold mb-1">{form.title}</h1>
-              {form.description && <p className="text-muted-foreground text-sm">{form.description}</p>}
             </div>
           )}
           {children}
