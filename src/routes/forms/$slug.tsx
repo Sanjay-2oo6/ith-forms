@@ -159,14 +159,18 @@ function PublicForm() {
 
   // Check if user is authenticated on page load
   // If not, trigger Google sign-in immediately
+  // IMPORTANT: Only trigger once - use a ref to avoid re-triggering on every render
+  const signInTriggered = useRef(false);
+  
   useEffect(() => {
     if (authLoading) return; // Wait for auth state to load
     
-    if (!authSession) {
+    if (!authSession && !signInTriggered.current) {
       console.log('[PublicForm] User not authenticated on page load, initiating Google sign-in');
+      signInTriggered.current = true;
       handleGoogleSignIn();
     }
-  }, [authLoading, authSession]);
+  }, [authLoading]);
 
   useEffect(() => {
     if (!slug) return;
