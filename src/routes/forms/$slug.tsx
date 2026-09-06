@@ -205,7 +205,7 @@ function PublicForm() {
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
-          skipBrowserRedirect: false,
+          skipBrowserRedirect: true,  // Let the callback handler control the redirect
           queryParams: {
             state: state,  // Include state in OAuth request
           },
