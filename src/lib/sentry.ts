@@ -27,36 +27,14 @@ export async function initSentryBrowser() {
 
   try {
     const Sentry = await import("@sentry/react");
-    // @ts-ignore - dynamic import may not have type definitions available yet
-    const { BrowserTracing } = await import("@sentry/tracing");
 
     // @ts-ignore - Sentry.init has dynamic config
     Sentry.init({
       dsn,
       environment: import.meta.env.MODE,
-      integrations: [
-        // @ts-ignore - BrowserTracing constructor
-        new BrowserTracing({
-          // Track React Router navigation
-          // @ts-ignore - Sentry method
-          routingInstrumentation: Sentry.reactRouterV6Instrumentation(
-            window.history
-          ),
-          // Sample traces: 10% for noise reduction
-          tracingOrigins: ["localhost", /^\//],
-        }),
-        // @ts-ignore - Replay constructor
-        new Sentry.Replay({
-          maskAllText: true,
-          blockAllMedia: true,
-        }),
-      ],
+      integrations: [],
       // Performance monitoring: sample 10% of transactions
       tracesSampleRate: 0.1,
-      // Session replay: sample 10% of sessions
-      replaysSessionSampleRate: 0.1,
-      // Replay on errors: capture ALL error sessions (helpful for debugging)
-      replaysOnErrorSampleRate: 1.0,
       // Ignore common noise
       ignoreErrors: [
         // Browser extensions and ads
