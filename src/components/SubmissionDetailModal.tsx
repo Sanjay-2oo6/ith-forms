@@ -222,9 +222,9 @@ export function SubmissionDetailModal({
                     </div>
 
                     {/* Answer — choice values mapped to labels (F1/F6) */}
-                    <div className="mt-2 min-w-0">
+                    <div className="mt-2 w-full min-w-0">
                       {answer ? (
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words bg-secondary/30 rounded-lg p-3 border border-border/40 w-full overflow-x-hidden">
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words word-break bg-secondary/30 rounded-lg p-3 border border-border/40 w-full overflow-hidden">
                           {displayAnswer(answer.value, question.type, optionMap?.[question.id])}
                         </p>
                       ) : (

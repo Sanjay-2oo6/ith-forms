@@ -1,3 +1,8 @@
+import { initSentryServer } from "./lib/sentry";
+
+// Initialize server-side error tracking
+await initSentryServer();
+
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };

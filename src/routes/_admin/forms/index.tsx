@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -163,7 +163,8 @@ function FormsList() {
   const [shareForm, setShareForm] = useState<Form | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
-  const { data: forms = [], isLoading: loading, refetch } = useQuery({
+  // Use offset pagination for forms (simpler for admin UI, dataset usually <1000)
+  const { data: allForms = [], isLoading: loading, refetch } = useQuery({
     queryKey: ["forms-list", showTrash],
     queryFn: async () => {
       let q = supabase
@@ -182,7 +183,8 @@ function FormsList() {
   });
   const load = () => refetch();
 
-  const filtered = forms.filter(f => {
+  // Client-side filtering (search + status) with pagination
+  const filtered = allForms.filter(f => {
     if (statusFilter !== "all" && f.status !== statusFilter) return false;
     if (search) {
       const q = search.toLowerCase();
@@ -190,6 +192,19 @@ function FormsList() {
     }
     return true;
   });
+
+  // Pagination: show 50 items per page
+  const pageSize = 50;
+  const [currentPage, setCurrentPage] = useState(0);
+  const pageCount = Math.ceil(filtered.length / pageSize);
+  const startIdx = currentPage * pageSize;
+  const endIdx = startIdx + pageSize;
+  const displayedForms = filtered.slice(startIdx, endIdx);
+
+  // Reset pagination when search/filter changes
+  React.useEffect(() => {
+    setCurrentPage(0);
+  }, [search, statusFilter]);
 
   async function softDelete(id: string) {
     const confirmed = await confirm({
@@ -200,7 +215,7 @@ function FormsList() {
     });
     if (!confirmed) return;
     
-    const form = forms.find(f => f.id === id);
+    const form = allForms.find(f => f.id === id);
     const { error } = await supabase.from("forms")
       .update({ status: "deleted", deleted_at: new Date().toISOString() })
       .eq("id", id);
@@ -219,7 +234,7 @@ function FormsList() {
   }
 
   async function restoreForm(id: string) {
-    const form = forms.find(f => f.id === id);
+    const form = allForms.find(f => f.id === id);
     const { error } = await supabase.from("forms")
       .update({ status: "draft", deleted_at: null })
       .eq("id", id);
@@ -354,88 +369,135 @@ function FormsList() {
         ) : filtered.length === 0 ? (
           <div className="rounded-xl border border-border/60 bg-card p-12 text-center">
             <p className="text-muted-foreground mb-4">
-              {showTrash ? "Trash is empty." : forms.length === 0 ? "No forms yet." : "No forms match your filters."}
+              {showTrash ? "Trash is empty." : allForms.length === 0 ? "No forms yet." : "No forms match your filters."}
             </p>
-            {!showTrash && forms.length === 0 && (
+            {!showTrash && allForms.length === 0 && (
               <Link to="/forms/new" className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90">
                 <Plus className="h-4 w-4" /> Create your first form
               </Link>
             )}
           </div>
         ) : (
-          <div className="space-y-3">
-            {filtered.map(f => (
-              <div key={f.id} className="flex items-center gap-4 rounded-xl border border-border/60 bg-card px-5 py-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <p className="font-semibold truncate">{f.title}</p>
-                    <span className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide ${STATUS_COLORS[f.status] ?? ""}`}>
-                      {f.status}
-                    </span>
+          <>
+            <div className="space-y-3">
+              {displayedForms.map(f => (
+                <div key={f.id} className="flex items-center gap-4 rounded-xl border border-border/60 bg-card px-5 py-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="font-semibold truncate">{f.title}</p>
+                      <span className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide ${STATUS_COLORS[f.status] ?? ""}`}>
+                        {f.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      /forms/{f.slug} ·{" "}
+                      <Link
+                        to="/forms/$formId/responses"
+                        params={{ formId: f.id }}
+                        className="hover:text-primary hover:underline transition-colors"
+                        title="View responses"
+                      >
+                        {f.response_count} response{f.response_count !== 1 ? "s" : ""}{f.max_responses ? ` / ${f.max_responses}` : ""}
+                      </Link>
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    /forms/{f.slug} ·{" "}
-                    <Link
-                      to="/forms/$formId/responses"
-                      params={{ formId: f.id }}
-                      className="hover:text-primary hover:underline transition-colors"
-                      title="View responses"
-                    >
-                      {f.response_count} response{f.response_count !== 1 ? "s" : ""}{f.max_responses ? ` / ${f.max_responses}` : ""}
-                    </Link>
-                  </p>
+                  <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
+                    {!showTrash ? (
+                      <>
+                        <Link to="/forms/$formId/responses" params={{ formId: f.id }}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-border hover:bg-secondary transition-colors">
+                          <BookOpen className="h-3.5 w-3.5" /> Responses
+                        </Link>
+                        <Link to="/forms/$formId/edit" params={{ formId: f.id }}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-border hover:bg-secondary transition-colors">
+                          <Pencil className="h-3.5 w-3.5" /> Edit
+                        </Link>
+                        {/* Share/Open only make sense once a public URL exists. */}
+                        {f.status === "published" && (
+                          <>
+                            <button onClick={() => setShareForm(f)}
+                              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-border hover:bg-secondary transition-colors">
+                              <Share2 className="h-3.5 w-3.5" /> Share
+                            </button>
+                            <a href={`/forms/${f.slug}`} target="_blank" rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-border hover:bg-secondary transition-colors">
+                              <ExternalLink className="h-3.5 w-3.5" /> Open
+                            </a>
+                          </>
+                        )}
+                        <MoreMenu
+                          label={`More actions for ${f.title}`}
+                          items={[
+                            {
+                              label: duplicatingId === f.id ? "Duplicating…" : "Duplicate",
+                              icon: CopyPlus,
+                              disabled: duplicatingId !== null,
+                              onSelect: () => handleDuplicate(f),
+                            },
+                            f.status === "published"
+                              ? { label: "Unpublish", icon: EyeOff, onSelect: () => togglePublish(f) }
+                              : { label: "Publish", icon: Eye, onSelect: () => togglePublish(f) },
+                            { type: "separator" },
+                            { label: "Delete", icon: Trash2, destructive: true, onSelect: () => softDelete(f.id) },
+                          ] satisfies MoreMenuItem[]}
+                        />
+                      </>
+                    ) : (
+                      <button onClick={() => restoreForm(f.id)}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-border text-primary hover:bg-primary/10 transition-colors">
+                          Restore
+                        </button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
-                  {!showTrash ? (
-                    <>
-                      <Link to="/forms/$formId/responses" params={{ formId: f.id }}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-border hover:bg-secondary transition-colors">
-                        <BookOpen className="h-3.5 w-3.5" /> Responses
-                      </Link>
-                      <Link to="/forms/$formId/edit" params={{ formId: f.id }}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-border hover:bg-secondary transition-colors">
-                        <Pencil className="h-3.5 w-3.5" /> Edit
-                      </Link>
-                      {/* Share/Open only make sense once a public URL exists. */}
-                      {f.status === "published" && (
-                        <>
-                          <button onClick={() => setShareForm(f)}
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-border hover:bg-secondary transition-colors">
-                            <Share2 className="h-3.5 w-3.5" /> Share
-                          </button>
-                          <a href={`/forms/${f.slug}`} target="_blank" rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-border hover:bg-secondary transition-colors">
-                            <ExternalLink className="h-3.5 w-3.5" /> Open
-                          </a>
-                        </>
-                      )}
-                      <MoreMenu
-                        label={`More actions for ${f.title}`}
-                        items={[
-                          {
-                            label: duplicatingId === f.id ? "Duplicating…" : "Duplicate",
-                            icon: CopyPlus,
-                            disabled: duplicatingId !== null,
-                            onSelect: () => handleDuplicate(f),
-                          },
-                          f.status === "published"
-                            ? { label: "Unpublish", icon: EyeOff, onSelect: () => togglePublish(f) }
-                            : { label: "Publish", icon: Eye, onSelect: () => togglePublish(f) },
-                          { type: "separator" },
-                          { label: "Delete", icon: Trash2, destructive: true, onSelect: () => softDelete(f.id) },
-                        ] satisfies MoreMenuItem[]}
-                      />
-                    </>
-                  ) : (
-                    <button onClick={() => restoreForm(f.id)}
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border border-border text-primary hover:bg-primary/10 transition-colors">
-                        Restore
-                      </button>
-                  )}
+              ))}
+            </div>
+
+            {/* Pagination controls */}
+            {pageCount > 1 && (
+              <div className="flex items-center justify-between mt-6 pt-4 border-t border-border/60">
+                <p className="text-xs text-muted-foreground">
+                  Showing {startIdx + 1}–{Math.min(endIdx, filtered.length)} of {filtered.length} form{filtered.length !== 1 ? "s" : ""}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                    disabled={currentPage === 0}
+                    className="h-8 px-3 rounded-md border border-border text-xs hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    ← Previous
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, pageCount) }, (_, i) => {
+                      const page = i + Math.max(0, currentPage - 2);
+                      if (page >= pageCount) return null;
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`h-8 w-8 rounded-md text-xs transition-colors ${
+                            currentPage === page
+                              ? "bg-primary text-primary-foreground"
+                              : "border border-border hover:bg-secondary"
+                          }`}
+                        >
+                          {page + 1}
+                        </button>
+                      );
+                    })}
+                    {pageCount > 5 && currentPage < pageCount - 3 && <span className="px-1">…</span>}
+                  </div>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(pageCount - 1, p + 1))}
+                    disabled={currentPage === pageCount - 1}
+                    className="h-8 px-3 rounded-md border border-border text-xs hover:bg-secondary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Next →
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 

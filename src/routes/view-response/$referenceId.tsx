@@ -7,6 +7,7 @@ import { Loader2, AlertCircle, FileText } from "lucide-react";
 export const Route = createFileRoute("/view-response/$referenceId")({
   ssr: false,
   component: ViewResponse,
+  // referenceId is the reference_token (secure, unpredictable token)
 });
 
 type SubmissionData = {
@@ -57,8 +58,8 @@ function ViewResponse() {
 
     try {
       const { data: result, error: rpcError } = await supabase.rpc(
-        "get_submission_by_reference",
-        { p_reference_id: referenceId }
+        "get_submission_by_token",
+        { p_reference_token: referenceId }
       );
 
       if (rpcError) {

@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { useSearch } from '@tanstack/react-router';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
@@ -8,10 +8,11 @@ import { supabase } from '@/integrations/supabase/client';
  * 
  * After user approves Google consent, they're redirected here with
  * an authorization code in the URL fragment. This route:
- * 1. Exchanges the code for a session via Supabase
- * 2. Extracts email + name from user metadata
- * 3. Stores auth state in sessionStorage
- * 4. Redirects back to the form (preserving slug)
+ * 1. Validates OAuth state parameter (CSRF protection)
+ * 2. Exchanges the code for a session via Supabase
+ * 3. Extracts email + name from user metadata
+ * 4. Stores auth state in sessionStorage
+ * 5. Redirects back to the form (preserving slug)
  * 
  * Must be client-only (ssr: false) because it uses browser APIs (sessionStorage)
  * and client-side routing (useNavigate).
@@ -25,23 +26,41 @@ export const Route = createFileRoute('/auth/callback')({
 type SearchParams = {
   slug?: string;
   redirectTo?: string;
+  state?: string;  // OAuth state parameter for CSRF protection
 };
 
 function AuthCallback() {
-  const navigate = useNavigate();
   const search = useSearch({ strict: false }) as SearchParams;
   const [slug, setSlug] = useState<string>("");
 
   useEffect(() => {
-    // On mount, extract slug from sessionStorage
+    // On mount, extract slug and validate state from sessionStorage
     if (typeof window !== "undefined") {
       const stored = sessionStorage.getItem('oauth_form_slug');
+      const storedState = sessionStorage.getItem('oauth_state');
+      
       if (stored) {
         console.log('[auth/callback] Retrieved slug from sessionStorage:', stored);
         setSlug(stored);
       } else {
         console.log('[auth/callback] No slug in sessionStorage, slug is empty');
         setSlug("");
+      }
+
+      // Validate state parameter (CSRF protection)
+      if (search.state && storedState) {
+        if (search.state !== storedState) {
+          console.error('[auth/callback] State mismatch - possible CSRF attack');
+          alert('Security validation failed. Please try signing in again.');
+          window.location.href = '/';
+          return;
+        }
+      } else if (search.state || storedState) {
+        // One exists but not both - suspicious
+        console.error('[auth/callback] State parameter incomplete - possible CSRF attack');
+        alert('Security validation failed. Please try signing in again.');
+        window.location.href = '/';
+        return;
       }
     }
   }, []);
@@ -115,12 +134,15 @@ function AuthCallback() {
     // Redirect to form if slug is available, otherwise to home
     if (slug && slug.trim()) {
       console.log('[auth/callback] Redirecting to form:', slug);
-      // Clear the stored slug since we're using it now
+      // Clear the stored slug and state since we're using them now
       sessionStorage.removeItem('oauth_form_slug');
+      sessionStorage.removeItem('oauth_state');
       // Use replace instead of navigate to avoid history issues
       window.location.href = `/forms/${slug}`;
     } else {
       console.log('[auth/callback] No slug found, redirecting to home');
+      // Clear stored state
+      sessionStorage.removeItem('oauth_state');
       window.location.href = '/';
     }
   }

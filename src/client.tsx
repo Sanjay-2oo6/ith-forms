@@ -1,6 +1,10 @@
 import { StartClient } from "@tanstack/react-start/client";
 import { hydrateRoot } from "react-dom/client";
 import { getRouter } from "./router";
+import { initSentryBrowser } from "./lib/sentry";
+
+// Initialize error tracking before app starts
+await initSentryBrowser();
 
 const router = getRouter();
 

@@ -17,9 +17,10 @@ Built with **React 19** · **TanStack Start/Router/Query** · **Tailwind CSS v4*
 7. [Development Conventions](#development-conventions)
 8. [Key Implementation Details](#key-implementation-details)
 9. [Security Overview](#security-overview)
-10. [Deployment](#deployment)
-11. [Known Limitations](#known-limitations)
-12. [License](#license)
+10. [Security Patches (2026)](#security-patches-2026)
+11. [Deployment](#deployment)
+12. [Known Limitations](#known-limitations)
+13. [License](#license)
 
 ---
 
@@ -196,10 +197,19 @@ Both are safe to commit (RLS + Google OAuth govern access). **Never** include th
 ### 3. Set Up Database
 1. Go to [Supabase Dashboard](https://app.supabase.com) → SQL Editor
 2. Run every migration file in `supabase/migrations/` **in canonical order** (see [docs/migrations.md](docs/migrations.md))
-3. Create your admin user:
-   - Go to Authentication → Users → Create user
-   - Record the **user ID** and **email**
-   - Run migration `014_add_your_admin_user.sql` with your email & user ID inserted
+3. Add your admin email to the whitelist:
+   - Run this query:
+     ```sql
+     INSERT INTO public.admin_whitelist (email, approved_by)
+     SELECT id, id FROM auth.users 
+     WHERE email = 'your-admin@example.com'
+     LIMIT 1;
+     ```
+   - Replace `your-admin@example.com` with your actual email
+   - Verify it worked:
+     ```sql
+     SELECT email, approved_at FROM public.admin_whitelist;
+     ```
 
 ### 4. Set Up Google OAuth
 1. Go to [Google Cloud Console](https://console.cloud.google.com)
@@ -439,12 +449,15 @@ const debouncedSave = useMemo(() => debounce(save, 600), []);
 
 ### Google Sign-in Flow
 1. User clicks "Sign in with Google" on public form
-2. Supabase redirects to Google consent → user approves
-3. Google returns `id_token` + email to `/auth/callback`
-4. Supabase auth session created
-5. Frontend calls `verify_google_email()` RPC → marks email as verified for this form
-6. Check `verified_emails` table before accepting `submit_response()`
-7. **Result**: One submission per unique verified email per form
+2. Frontend generates cryptographically secure `state` parameter (CSRF protection)
+3. Stores `state` in sessionStorage
+4. Supabase redirects to Google consent → user approves
+5. Google returns `id_token` + email to `/auth/callback?state=…`
+6. Frontend validates `state` matches stored value (prevents CSRF)
+7. Supabase auth session created
+8. Frontend extracts email + name from session
+9. Frontend calls form submission with verified Google email
+10. **Result**: One submission per unique verified email per form
 
 ### Idempotent Submission
 - Frontend generates UUID `idempotency_key` before first attempt
@@ -452,17 +465,41 @@ const debouncedSave = useMemo(() => debounce(save, 600), []);
 - If network fails → retry with same key
 - RPC checks: does a submission with `idempotency_key='abc-123'` exist?
   - Yes → return original submission ID (no duplicate)
-  - No → insert new row + return new ID
+  - No → insert new row + generate secure reference token + return ID & token
 - **Race-safe** via unique index on `idempotency_key`
+- **Returns**: Both `reference_id` (human-readable) and `reference_token` (secure)
 
-### Reference IDs
-Format: `{FORM_ABBR}-{form-prefix}-{00001}`
+### Reference IDs & Tokens
+**Reference ID** (human-readable, admin-visible):
+- Format: `{FORM_ABBR}-{form-prefix}-{00001}`
 - `FORM_ABBR` — 4-letter application code (e.g., "ITH_")
 - `form-prefix` — 1–8 char form slug (e.g., "app")
 - `00001` — zero-padded sequence per form
-- Example: `ITH_-app-00001`, `ITH_-app-00002`, …
+- Example: `ITH_-app-00001`, `ITH_-app-00002`
+- Generated via RPC `next_reference_id(formId)` with row locking
 
-Generated via RPC `next_reference_id(formId)` with row locking to prevent race conditions.
+**Reference Token** (secure, unpredictable):
+- 256-bit cryptographically random value
+- Base64url encoded (URL-safe)
+- Example: `jK7mP9qRsT2uVwXyZaBcDeFgHiJkLmNoPqRsTuVwXy_Z`
+- Used in public links: `/view-response/{referenceToken}`
+- Cannot be guessed; prevents enumeration attacks
+- Generated via `encode(gen_random_bytes(24), 'base64url')`
+
+**Admin View**: Reference ID displayed (readable, trackable)
+**Public View**: Reference Token used in URLs (secure, non-enumerable)
+
+### Submission Access Control
+**Respondent can view their submission** via reference token:
+- `/view-response/{referenceToken}` → calls `get_submission_by_token(token)`
+- Token is unpredictable; no way to enumerate other submissions
+- Respondent receives token after form submission
+
+**Admin can view any submission** via reference ID:
+- Admin dashboard shows reference ID
+- `/admin/forms/{formId}/responses/{refId}` → calls `get_submission_by_reference(id)`
+- Requires admin authentication
+- Access control: checks if user is admin OR user email matches respondent email
 
 ### URL Pre-fill
 Query params like `?name=John&email=john@example.com` auto-populate compatible questions:
@@ -470,6 +507,15 @@ Query params like `?name=John&email=john@example.com` auto-populate compatible q
 - **Label match**: `?full_name=…` fills a question labeled "Full Name"
 - **Substring match**: `?contact=…` fills "Contact Information" (if 3+ char key)
 - **Validation**: pre-fill values are capped at 500 chars; full validation still applies on submit
+
+### Rate Limiting
+- **Limit**: 10 submissions per hour per email (sliding window)
+- **Table**: `submission_rate_limit` tracks submission attempts
+- **Check**: Before processing, RPC counts submissions in past hour
+  - Count ≥ 10 → reject with "Rate limit exceeded"
+  - Count < 10 → allow + record attempt
+- **Scope**: Per form + per email (same person, different forms = separate limits)
+- **Logging**: Rate limit violations logged to `audit_logs`
 
 ### XLSX Export
 1. Fetch all submissions + answers for the form
@@ -483,16 +529,12 @@ Query params like `?name=John&email=john@example.com` auto-populate compatible q
 - **Server**: `register_submission_file()` RPC validates:
   - Submission exists + is fresh (< 1 hour old)
   - Question belongs to same form
-  - File path is under submission folder: `{submission_id}/{filename}`
+  - **File path is strict**: must be exactly `{submission_id}/{filename}` (no subdirectories, no `../`, no double slashes)
   - File size < 10 MB
   - Mime type whitelisted
+  - No null bytes, control characters, or hidden files
+- **Traversal prevention**: Logs attempts to escape submission folder to `audit_logs`
 - **Access**: Admin downloads via signed URL (15 min expiry) → automatic revocation
-
-### Rate Limiting (Google OAuth)
-- **One submission per verified email per form** (configurable to allow multiple)
-- **Prevents**: Same person mass-submitting with different names
-- **Caveat**: Different email addresses can still submit (e.g., person with multiple Google accounts)
-- **Future**: IP-based rate limiting or Cloudflare challenge (if needed)
 
 ---
 
@@ -504,18 +546,70 @@ Every table has RLS enabled. Policies check:
 - **Submissions** — anon can only call `submit_response()` RPC; cannot read/write directly
 - **Public forms** — anon can read published, non-deleted forms only
 - **Files** — private bucket; admins read via signed URLs
+- **verified_emails** — admin-only read; modifications only via `submit_response()` RPC
+
+### Authentication & Authorization
+- **Admin login** — Google OAuth (one verified email = one admin per form)
+- **Public respondents** — Google OAuth (one verified email = one submission per form)
+- **Admin whitelist** — `admin_whitelist` table gates admin provisioning. Only whitelisted emails can become admins
+  - Prevents auto-admin-on-first-login vulnerability
+  - Admins must be explicitly approved before access
+  - See `Setup Database` section for how to add your email
+- **No self-signup** for admins (deliberate security boundary)
+- **Service-role key** never shipped to frontend (stays on backend only)
+
+### Submission Security
+- **Reference tokens** — secure, unpredictable tokens for public submission links
+  - Sequential reference IDs hidden from public (admin-only)
+  - Public links use `reference_token` (256-bit crypto-random base64url)
+  - Prevents enumeration attacks (cannot guess other submissions)
+- **Email validation** — `submit_response()` RPC validates submitted email matches authenticated session
+  - Prevents email tampering/impersonation
+  - Logs mismatch attempts to audit trail
+- **Rate limiting** — max 10 submissions per hour per email (sliding window)
+  - Prevents spam and DoS attacks
+  - Per-form enforcement
+- **Idempotent submission** — same `idempotency_key` returns original (no duplicates)
+  - Race-safe via unique index + row-level locking
+
+### OAuth Security
+- **CSRF protection** — state parameter validation on OAuth callback
+  - Prevents attackers from redirecting users to fake auth flows
+  - State generated client-side, stored in sessionStorage, validated on return
+  - Mismatch → reject with error message
+- **Verified Google tokens** — email/name come directly from Google, not user input
+
+### File Upload Security
+- **Path traversal protection** — strict validation prevents `../` and directory escape attempts
+  - Paths must be exactly `{submission_id}/{filename}`
+  - No subdirectories, double slashes, null bytes, or special characters allowed
+  - Logs traversal attempts to audit trail
+- **Size limits** — file < 10 MB (configurable per question, max 50 MB)
+- **Type validation** — MIME types whitelisted per question config
+- **Private storage** — all files in private bucket; access via signed URLs only
+- **Signed URLs** expire in 15 min (automatic revocation)
+- **Admin-only access** — users cannot download others' files
 
 ### No Direct Anon Writes
-- Pre-2024: anon users could directly `INSERT` into `submissions`
-- Migration 005 dropped all legacy anon policies
-- **Now**: anon **only** calls `submit_response()` RPC (SECURITY DEFINER validates everything)
+- Pre-2024: anon users could directly `INSERT` into `submissions` (security hole)
+- Migration 005 + 051 dropped all legacy anon policies
+- **Now**: anon **only** calls `submit_response()` RPC (SECURITY DEFINER validates everything):
+  - Validates form is published
+  - Validates email matches session
+  - Validates per-form response limits
+  - Checks rate limits
+  - Generates secure reference token
 - Result: Cannot forge reference IDs, cannot skip validation, cannot submit to unpublished forms
 
-### Authentication & OAuth
-- Admin login via Supabase Auth (email + password)
-- Public respondents via Google OAuth (one verified email = one submission per form)
-- No self-signup for admins (deliberate security boundary)
-- Service-role key **never** shipped to frontend (stays on backend only)
+### Input Validation
+- **Client**: Zod schemas validate on form change (UX feedback)
+- **Server**: `submit_response()` RPC re-validates all answers:
+  - Array length < 50
+  - String values < 20,000 chars
+  - Questions must belong to the form
+  - Required fields present
+  - Email matches authenticated session (NEW)
+  - Rate limits enforced (NEW)
 
 ### Content Security Policy (CSP)
 ```
@@ -532,36 +626,70 @@ style-src 'unsafe-inline' 'nonce-{random}';
 All admin mutations logged to `audit_logs`:
 ```
 {
-  admin_id: uuid,
-  admin_email: text,
+  id: uuid,
   action: text (CHECK constrained),
-  entity_type: text,
-  entity_id: uuid,
-  changes: jsonb (before/after if applicable),
+  entity: text,
+  entity_id: text,
+  actor_email: text,
+  metadata: jsonb,
   created_at: timestamp
 }
 ```
-Append-only; no delete. Full audit chain for compliance.
-
-### File Upload Validation
-- Path must be under submission folder (prevents escapes)
-- Size < 10 MB (prevents disk exhaustion)
-- Mime type whitelisted (prevents malicious uploads)
-- Signed URLs expire in 15 min (time-limited access)
-- Private bucket (no public listing)
-
-### Input Validation
-- **Client**: Zod schemas validate on form change (UX feedback)
-- **Server**: `submit_response()` RPC re-validates all answers
-  - Array length < 50
-  - String values < 20,000 chars
-  - Questions must belong to the form
-  - Required fields present
+- Append-only; no delete
+- Tracks form changes, status updates, exports, security events (email mismatches, rate limits, path traversal attempts)
+- Full audit chain for compliance
 
 ### Idempotency & Race Conditions
-- `idempotency_key` prevents accidental duplicates
+- `idempotency_key` prevents accidental duplicates on retry
 - Row-level locking in `submit_response()` ensures `max_responses` is enforced atomically
 - Reference ID generation uses `FOR UPDATE` lock on form row
+
+### Recent Security Patches (2026)
+1. **Reference ID Enumeration (HIGH)** — Fixed by switching public access to secure `reference_token`
+2. **Auto-Admin Provisioning (CRITICAL)** — Fixed with `admin_whitelist` table + approval workflow
+3. **Email Enumeration (HIGH)** — Fixed by revoking anon RLS on `verified_emails`
+4. **Email Tampering (HIGH)** — Fixed with email validation in `submit_response()`
+5. **OAuth CSRF (HIGH)** — Fixed with state parameter validation
+6. **DoS/Spam (HIGH)** — Fixed with rate limiting on `submit_response()`
+7. **Path Traversal (HIGH)** — Fixed with strict path normalization in file upload RPC
+
+---
+
+## Security Patches (2026)
+
+This section documents critical security vulnerabilities identified and fixed in January 2026.
+
+### Vulnerabilities Fixed
+
+| # | Vulnerability | Severity | Fix | Status |
+|---|---|---|---|---|
+| 1 | Reference ID Enumeration | HIGH | Use `reference_token` (256-bit random) for public links instead of sequential `reference_id` | ✅ Fixed |
+| 2 | Auto-Admin Provisioning | CRITICAL | Implement `admin_whitelist` table; only whitelisted emails can become admins | ✅ Fixed |
+| 3 | Email Enumeration | HIGH | Revoke anon RLS on `verified_emails`; restrict to authenticated admins | ✅ Fixed |
+| 4 | Email Tampering | HIGH | Validate submitted email matches authenticated session in `submit_response()` RPC | ✅ Fixed |
+| 5 | OAuth CSRF | HIGH | Add state parameter validation in OAuth callback flow | ✅ Fixed |
+| 6 | DoS/Spam | HIGH | Implement rate limiting (10 submissions/hour per email) | ✅ Fixed |
+| 7 | Path Traversal | HIGH | Strict file path validation preventing `../` and directory escapes | ✅ Fixed |
+| 8 | Response Text Overflow | MEDIUM | Fix CSS layout in submission detail modal | ✅ Fixed |
+
+### Migration Files
+All patches implemented via new migrations (050–055):
+- `050_fix_reference_id_enumeration.sql` — Token-based access + access control
+- `051_fix_verified_emails_rls.sql` — Restrictive RLS policies
+- `052_fix_auto_admin_provisioning.sql` — Admin whitelist requirement
+- `053_add_email_validation_to_submit_response.sql` — Email tampering prevention + rate limiting check
+- `054_add_rate_limiting_to_submit_response.sql` — Rate limit infrastructure
+- `055_fix_file_path_traversal.sql` — File upload security
+
+### Admin Action Required
+After running migrations 050–055, add your admin email to the whitelist:
+
+```sql
+INSERT INTO public.admin_whitelist (email, approved_by)
+SELECT id, id FROM auth.users 
+WHERE email = 'your-admin@example.com'
+LIMIT 1;
+```
 
 ---
 
@@ -629,12 +757,17 @@ This means:
 
 ## Known Limitations
 
+### Admin Account Provisioning
+- No self-signup for admins (deliberate security boundary)
+- Admins must be whitelisted in `admin_whitelist` table before first login
+- **Setup**: Add your email to whitelist via SQL query in Supabase console (see Setup Database section)
+- **Workaround**: Automate via CLI or create an invite RPC (future)
+
 ### Manual Migrations
 - No automated migration system (no Prisma, Liquibase, etc.)
 - Migrations run manually via Supabase SQL Editor
 - Order matters; see [docs/migrations.md](docs/migrations.md) for canonical sequence
-- Migration 014 requires manual user ID insertion before running
-- **Workaround**: Consider Supabase CLI for future automation
+- **Workaround**: Consider Supabase CLI or custom migration runner (future)
 
 ### CSP & Nonce
 - CSP allows `'unsafe-inline'` for scripts (should use nonces)
@@ -642,23 +775,18 @@ This means:
 - Revisit once framework supports per-request nonces
 - Compensating controls: frame-src, style-src strict, no eval
 
-### Admin Account Provisioning
-- No self-signup for admins (deliberate security boundary)
-- Must create via Supabase Auth console, then manually insert into `admin_users`
-- **Workaround**: Automate via CLI or create an invite RPC (future)
-
 ### No CAPTCHA / Bot Protection
 - No built-in CAPTCHA on public forms
-- Rate limiting = one submission per verified Google email per form
-- **For high-volume abuse**: Use Cloudflare challenge or IP-based rate limit
+- Primary defense: rate limiting (10 submissions/hour per email)
+- **For high-volume abuse**: Use Cloudflare challenge or IP-based rate limit (edge layer)
 
-### Reference ID Tokens as Capabilities
-- Link `/view-response/{referenceId}` acts as a capability token
+### Reference Token as Capability Link
+- Link `/view-response/{referenceToken}` acts as a capability token
 - Anyone with the URL can view that submission
 - **By design** (respondents get a link to check their submission)
-- **Security**: Tokens are long UUIDs; guessing is infeasible
+- **Security**: Tokens are 256-bit random; guessing is cryptographically infeasible
 - **Risk**: If link is shared publicly, submission is visible to all
-- **Workaround**: Forms can disable respondent access in settings (future)
+- **Workaround**: Respondent access can be disabled in form settings (future)
 
 ### Single Supabase Project
 - App tied to one Supabase project
@@ -669,6 +797,12 @@ This means:
 - Static redirects via `netlify.toml` (SPA routing works out of box)
 - Response time ties to Supabase latency (no caching layer)
 - No edge-side authentication (SSR can run closer, but still auth-heavy)
+
+### Rate Limiting Granularity
+- Rate limiting is per email per form (not IP-based)
+- Same person with multiple Google accounts can submit multiple times
+- Legitimate users with multiple emails not blocked
+- **For stricter control**: Add IP-based rate limiting at edge (Cloudflare, Netlify functions)
 
 ---
 

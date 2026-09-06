@@ -207,6 +207,12 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent);
     outline: none;
   }
+
+  /* Word break utility for long unbroken text that escapes containers */
+  .word-break {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
 }
 
 /*

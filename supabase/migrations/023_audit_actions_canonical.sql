@@ -38,7 +38,11 @@ ALTER TABLE public.audit_logs ADD CONSTRAINT audit_logs_action_check
     'theme.updated',
     -- submissions
     'submission.status_changed',
-    'submission.exported'
+    'submission.exported',
+    -- security validations (053, 055)
+    'submit_response_email_mismatch',      -- written by submit_response (053)
+    'submit_response_rate_limited',         -- written by submit_response (053)
+    'file_upload_path_traversal_attempt'   -- written by register_submission_file (055)
   ));
 
 -- Verify afterwards (should list the new definition):

@@ -134,6 +134,7 @@ function PublicForm() {
   const [answers, setAnswers] = useState<Answers>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [referenceId, setReferenceId] = useState<string | null>(null);
+  const [referenceToken, setReferenceToken] = useState<string | null>(null);
   const [uploadWarnings, setUploadWarnings] = useState<string[]>([]);
   const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
   const [consentAgreed, setConsentAgreed] = useState(false);
@@ -190,10 +191,16 @@ function PublicForm() {
     try {
       console.log('[PublicForm] Initiating Google sign-in with slug:', slug);
       
-      // Store slug in sessionStorage so callback can retrieve it
+      // Generate cryptographically secure random state for CSRF protection
+      const state = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      
+      // Store slug and state in sessionStorage so callback can retrieve and validate them
       if (typeof window !== "undefined" && slug) {
         sessionStorage.setItem('oauth_form_slug', slug);
-        console.log('[PublicForm] Stored slug in sessionStorage:', slug);
+        sessionStorage.setItem('oauth_state', state);
+        console.log('[PublicForm] Stored slug and state in sessionStorage');
       }
       
       // Use current origin for OAuth callback - works for custom domain and Vercel
@@ -206,6 +213,10 @@ function PublicForm() {
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
+          skipBrowserRedirect: false,
+          queryParams: {
+            state: state,  // Include state in OAuth request
+          },
         },
       });
 
@@ -509,7 +520,7 @@ function PublicForm() {
       p_answers: answerPayload,
     });
 
-    const result = rpcData as { submission_id: string; reference_id: string } | null;
+    const result = rpcData as { submission_id: string; reference_id: string; reference_token: string } | null;
 
     if (rpcErr || !result?.submission_id) {
       // Surface the real cause in the console so failures are diagnosable.
@@ -604,13 +615,15 @@ function PublicForm() {
 
     setUploadWarnings(failedUploads);
     setConfirmEmail(respondentEmail);
+    // Store both reference_id (human-readable) and reference_token (secure)
     setReferenceId(result.reference_id);
+    setReferenceToken(result.reference_token || result.reference_id);
     
-    // Persist thank you page view by updating URL with submitted reference ID
+    // Persist thank you page view by updating URL with submitted reference token
     // So that if user refreshes, they stay on thank you page instead of reloading form
     if (typeof window !== "undefined") {
-      const newUrl = `${window.location.pathname}?submitted=${result.reference_id}`;
-      window.history.replaceState({ submitted: result.reference_id }, '', newUrl);
+      const newUrl = `${window.location.pathname}?submitted=${result.reference_token || result.reference_id}`;
+      window.history.replaceState({ submitted: result.reference_token || result.reference_id }, '', newUrl);
     }
     
     setFormState("done");
@@ -668,16 +681,16 @@ function PublicForm() {
             </p>
           )}
           {/* ITEM 8: Link to view submission later */}
-          {referenceId && (
+          {referenceToken && (
             <div className="mt-6 p-4 rounded-lg border border-border bg-secondary/20">
               <p className="text-sm font-medium mb-2">View your submission anytime</p>
               <a 
-                href={`/view-response/${referenceId}`}
+                href={`/view-response/${referenceToken}`}
                 className="text-sm text-primary hover:underline break-all"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {typeof window !== 'undefined' ? window.location.origin : ''}/view-response/{referenceId}
+                {typeof window !== 'undefined' ? window.location.origin : ''}/view-response/{referenceToken}
               </a>
               <p className="text-xs text-muted-foreground mt-2">Save this link to review your answers later</p>
             </div>
