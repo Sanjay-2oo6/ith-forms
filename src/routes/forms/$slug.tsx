@@ -1305,7 +1305,7 @@ function QuestionField({ question: q, value, error, onChange }: {
           <label className="block text-lg font-bold text-foreground mb-3">
             {q.label}{q.required && <span className="text-destructive ml-1">*</span>}
           </label>
-          {q.description && <p className="text-sm text-muted-foreground mb-3">{q.description}</p>}
+          {q.description && <p id={`desc-${q.id}`} className="text-sm text-muted-foreground mb-3">{q.description}</p>}
           <div className="overflow-x-auto" role="group" aria-label={q.label} aria-describedby={q.description ? `desc-${q.id}` : undefined}>
             <table className="text-sm" role="grid" aria-label={`${q.label} - Multiple choice grid`}>
             <thead>
