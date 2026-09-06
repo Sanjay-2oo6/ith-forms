@@ -183,16 +183,10 @@ function PublicForm() {
     try {
       console.log('[PublicForm] Initiating Google sign-in with slug:', slug);
       
-      // Generate cryptographically secure random state for CSRF protection
-      const state = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-      
-      // Store slug and state in sessionStorage so callback can retrieve and validate them
+      // Store slug in sessionStorage so callback can retrieve it
       if (typeof window !== "undefined" && slug) {
         sessionStorage.setItem('oauth_form_slug', slug);
-        sessionStorage.setItem('oauth_state', state);
-        console.log('[PublicForm] Stored slug and state in sessionStorage');
+        console.log('[PublicForm] Stored slug in sessionStorage:', slug);
       }
       
       // Use current origin for OAuth callback - works for custom domain and Vercel
@@ -201,18 +195,22 @@ function PublicForm() {
       
       console.log('[PublicForm] Using redirect URL:', redirectUrl);
       
-      await supabase.auth.signInWithOAuth({
+      // signInWithOAuth will redirect to Google OAuth screen
+      // After user approves, Google redirects to /auth/callback with the code
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectUrl,
-          skipBrowserRedirect: true,  // Let the callback handler control the redirect
-          queryParams: {
-            state: state,  // Include state in OAuth request
-          },
+          // Don't set skipBrowserRedirect - let Supabase handle the redirect to Google
         },
       });
 
-      console.log('[PublicForm] Google sign-in initiated');
+      if (error) {
+        console.error('[PublicForm] OAuth error:', error);
+        setErrors({ __form: `Sign-in failed: ${error.message}` });
+      } else {
+        console.log('[PublicForm] Google sign-in initiated, redirecting to Google...');
+      }
     } catch (error) {
       console.error('[PublicForm] Unexpected error during sign-in:', error);
       setErrors({ __form: 'An unexpected error occurred. Please try again.' });

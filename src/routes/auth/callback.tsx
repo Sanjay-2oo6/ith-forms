@@ -26,7 +26,6 @@ export const Route = createFileRoute('/auth/callback')({
 type SearchParams = {
   slug?: string;
   redirectTo?: string;
-  state?: string;  // OAuth state parameter for CSRF protection
 };
 
 function AuthCallback() {
@@ -34,10 +33,9 @@ function AuthCallback() {
   const [slug, setSlug] = useState<string>("");
 
   useEffect(() => {
-    // On mount, extract slug and validate state from sessionStorage
+    // On mount, extract slug from sessionStorage
     if (typeof window !== "undefined") {
       const stored = sessionStorage.getItem('oauth_form_slug');
-      const storedState = sessionStorage.getItem('oauth_state');
       
       if (stored) {
         console.log('[auth/callback] Retrieved slug from sessionStorage:', stored);
@@ -45,22 +43,6 @@ function AuthCallback() {
       } else {
         console.log('[auth/callback] No slug in sessionStorage, slug is empty');
         setSlug("");
-      }
-
-      // Validate state parameter (CSRF protection)
-      if (search.state && storedState) {
-        if (search.state !== storedState) {
-          console.error('[auth/callback] State mismatch - possible CSRF attack');
-          alert('Security validation failed. Please try signing in again.');
-          window.location.href = '/';
-          return;
-        }
-      } else if (search.state || storedState) {
-        // One exists but not both - suspicious
-        console.error('[auth/callback] State parameter incomplete - possible CSRF attack');
-        alert('Security validation failed. Please try signing in again.');
-        window.location.href = '/';
-        return;
       }
     }
   }, []);
