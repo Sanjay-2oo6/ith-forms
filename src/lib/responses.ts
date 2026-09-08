@@ -238,59 +238,63 @@ export async function exportResponsesXlsx(opts: {
 
   // Add data rows with properly formatted RichText BEFORE adding to worksheet
   rows.forEach((row) => {
-    // Build cell values with RichText formatting for URLs
-    const cellValues: any[] = [];
+    // Build plain text values first for addRow()
+    const cellValues = Object.values(row).map((value) => {
+      const stringValue = value as string;
+      // For now, just pass the plain value; we'll apply RichText formatting after addRow
+      if (stringValue && typeof stringValue === 'string' && stringValue.startsWith('=')) {
+        return "'" + stringValue;  // Escape formula
+      }
+      return stringValue || '';
+    });
     
+    // Add row with plain values
+    const excelRow = worksheet.addRow(cellValues);
+    
+    // NOW apply RichText formatting to URL cells using the cell's richText property
+    let cellIndex = 0;
     for (const value of Object.values(row)) {
       const stringValue = value as string;
       
-      // Check if this cell contains URLs
       if (stringValue && typeof stringValue === 'string' && stringValue.includes('https://')) {
         const urls = stringValue.split('\n').filter(u => u.trim() && u.startsWith('https://'));
         
         if (urls.length > 0) {
-          // Create RichText array for this cell
-          const richText: any[] = [];
+          const cell = excelRow.getCell(cellIndex + 1) as any;
           
-          urls.forEach((url, idx) => {
-            richText.push({
+          // Use ExcelJS's richText array property (the correct API)
+          cell.richText = urls.map((url, idx) => {
+            const parts = [];
+            parts.push({
               font: { underline: true, color: { argb: 'FF0563C1' } },
-              text: url,
-              hyperlink: {
-                target: url,
-                tooltip: url
-              }
+              text: url
             });
             
             // Add newline between URLs (except after last one)
             if (idx < urls.length - 1) {
-              richText.push({
+              parts.push({
                 font: { underline: false },
                 text: '\n'
               });
             }
-          });
+            
+            return parts;
+          }).flat();
           
-          cellValues.push(richText);
-        } else {
-          cellValues.push(stringValue);
-        }
-      } else {
-        // Regular cell - apply formula injection protection if needed
-        if (stringValue && typeof stringValue === 'string' && stringValue.startsWith('=')) {
-          cellValues.push("'" + stringValue);  // Escape formula
-        } else {
-          cellValues.push(stringValue || '');
+          // Set hyperlink on the cell
+          (cell as any).hyperlink = { target: urls[0], tooltip: urls[0] };
+          cell.alignment = { wrapText: true, vertical: 'top' };
         }
       }
+      
+      cellIndex++;
     }
-    
-    // Add row with pre-formatted values (including RichText objects)
-    const excelRow = worksheet.addRow(cellValues);
     
     // Set alignment for all cells in the row
     excelRow.eachCell((cell) => {
-      cell.alignment = { wrapText: true, vertical: 'top' };
+      if (!cell.alignment) {
+        cell.alignment = { wrapText: true, vertical: 'top' };
+      }
     });
   });
 
