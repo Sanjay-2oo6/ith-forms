@@ -11,13 +11,7 @@ BEGIN
     WHERE proname = 'to_base64url' 
     AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
   ) THEN
-    CREATE FUNCTION public.to_base64url(data bytea)
-    RETURNS text
-    LANGUAGE sql
-    IMMUTABLE
-    AS $$
-      SELECT replace(replace(replace(encode(data, 'base64'), '+', '-'), '/', '_'), '=', '');
-    $$;
+    EXECUTE 'CREATE FUNCTION public.to_base64url(data bytea) RETURNS text LANGUAGE sql IMMUTABLE AS $func$ SELECT replace(replace(replace(encode(data, ''base64''), ''+'' , ''-''), ''/'', ''_''), ''='', ''''); $func$';
     GRANT EXECUTE ON FUNCTION public.to_base64url(bytea) TO authenticated, anon;
   END IF;
 END
