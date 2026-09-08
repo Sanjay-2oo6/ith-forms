@@ -234,9 +234,25 @@ export async function exportResponsesXlsx(opts: {
     };
   }
 
-  // Add data rows
+  // Add data rows and process file URLs into hyperlinks
   safe.forEach((row) => {
-    worksheet.addRow(Object.values(row));
+    const excelRow = worksheet.addRow(Object.values(row));
+    
+    // Convert URLs in cells to hyperlinks
+    excelRow.eachCell((cell) => {
+      const cellValue = cell.value as string;
+      if (cellValue && typeof cellValue === 'string' && cellValue.startsWith('https://')) {
+        // Split by newline in case multiple URLs
+        const urls = cellValue.split('\n').filter(u => u.trim());
+        if (urls.length >= 1) {
+          // Make first URL a hyperlink
+          cell.value = urls[0];
+          // Use the cell as a rich text with hyperlink
+          (cell as any).hyperlink = urls[0];
+          cell.font = { underline: true, color: { argb: 'FF0563C1' } };
+        }
+      }
+    });
   });
 
   // Auto-fit columns
