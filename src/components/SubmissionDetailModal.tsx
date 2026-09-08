@@ -36,6 +36,7 @@ type Question = {
   type: string;
   position: number;
   section_title: string | null;
+  section_position?: number;  // Added to track section order
 };
 
 interface SubmissionDetailModalProps {
@@ -117,16 +118,17 @@ export function SubmissionDetailModal({
   }
 
   // Sort questions by section position, then question position
-  // (RPC already returns in correct order, but we ensure it here)
+  // The RPC returns them pre-sorted, but we ensure correct order here
   const sortedQuestions = [...questions].sort((a, b) => {
-    // Group by section first - sections without titles go last
-    const aSectionTitle = a.section_title || "zzz_no_section";
-    const bSectionTitle = b.section_title || "zzz_no_section";
+    // Sort by section position first (if available)
+    const aSectionPos = a.section_position ?? 999;
+    const bSectionPos = b.section_position ?? 999;
     
-    if (aSectionTitle !== bSectionTitle) {
-      return aSectionTitle.localeCompare(bSectionTitle);
+    if (aSectionPos !== bSectionPos) {
+      return aSectionPos - bSectionPos;
     }
-    // Within same section, sort by position
+    
+    // Within same section, sort by question position
     return (a.position ?? 0) - (b.position ?? 0);
   });
   

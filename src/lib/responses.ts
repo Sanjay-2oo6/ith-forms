@@ -12,6 +12,7 @@ export type ResponseQuestion = {
   type: string;
   position: number;
   section_title: string | null;
+  section_position?: number;  // Added to track section order
 };
 
 export type ResponseAnswer = {

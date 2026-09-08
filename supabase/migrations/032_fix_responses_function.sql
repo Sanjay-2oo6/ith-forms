@@ -123,7 +123,8 @@ BEGIN
           'label', q.label,
           'type', q.type,
           'position', q.position,
-          'section_title', sec.title
+          'section_title', sec.title,
+          'section_position', COALESCE(sec.position, 999)
         )
         ORDER BY sec.position, q.position
       )
