@@ -118,6 +118,11 @@ export function SubmissionDetailModal({
 
   // Sort questions by position
   const sortedQuestions = [...questions].sort((a, b) => a.position - b.position);
+  
+  // Debug logging
+  console.log("Modal received questions:", sortedQuestions.length);
+  console.log("Modal submission ID:", submission.id);
+  console.log("Modal answers keys:", Object.keys(submission.answers || {}));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -138,7 +143,15 @@ export function SubmissionDetailModal({
         </div>
 
         {/* Content - Scrollable */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6" onScroll={(e) => {
+          const target = e.currentTarget;
+          console.log("Modal scroll:", {
+            scrollTop: target.scrollTop,
+            scrollHeight: target.scrollHeight,
+            clientHeight: target.clientHeight,
+            percentage: (target.scrollTop / (target.scrollHeight - target.clientHeight) * 100).toFixed(1) + '%'
+          });
+        }}>
           {/* Submission Info Card */}
           <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-3">
             <div className="flex items-start justify-between gap-4">
@@ -185,7 +198,7 @@ export function SubmissionDetailModal({
           {/* Answers */}
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4">
-              Responses
+              Responses ({sortedQuestions.length} questions)
             </h3>
             <div className="space-y-6">
               {sortedQuestions.map((question, idx) => {
