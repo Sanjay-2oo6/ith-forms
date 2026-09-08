@@ -116,8 +116,19 @@ export function SubmissionDetailModal({
     }
   }
 
-  // Sort questions by position
-  const sortedQuestions = [...questions].sort((a, b) => a.position - b.position);
+  // Sort questions by section position, then question position
+  // (RPC already returns in correct order, but we ensure it here)
+  const sortedQuestions = [...questions].sort((a, b) => {
+    // Group by section first - sections without titles go last
+    const aSectionTitle = a.section_title || "zzz_no_section";
+    const bSectionTitle = b.section_title || "zzz_no_section";
+    
+    if (aSectionTitle !== bSectionTitle) {
+      return aSectionTitle.localeCompare(bSectionTitle);
+    }
+    // Within same section, sort by position
+    return (a.position ?? 0) - (b.position ?? 0);
+  });
   
   // Debug logging
   console.log("Modal received questions:", sortedQuestions.length);

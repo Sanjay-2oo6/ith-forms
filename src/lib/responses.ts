@@ -165,7 +165,7 @@ export async function buildExportRows(
           if (qFiles.length > 0) {
             if (supabase) {
               // Generate signed URLs for files (valid for 1 hour)
-              const fileLinks = await Promise.all(
+              const fileUrls = await Promise.all(
                 qFiles.map(async (f) => {
                   try {
                     const { data, error } = await supabase.storage
@@ -174,13 +174,13 @@ export async function buildExportRows(
                     if (error || !data?.signedUrl) {
                       return f.file_name; // Fallback to filename if URL generation fails
                     }
-                    return `${f.file_name}: ${data.signedUrl}`;
+                    return data.signedUrl;  // Return just the URL
                   } catch (err) {
                     return f.file_name; // Fallback on error
                   }
                 })
               );
-              cellValue = fileLinks.join("\n");
+              cellValue = fileUrls.join("\n");  // Separate multiple URLs with newlines
             } else {
               // Fallback: just show filenames if no Supabase client
               cellValue = qFiles.map(f => f.file_name).join(", ");
