@@ -212,7 +212,9 @@ export async function exportResponsesXlsx(opts: {
   if (exportSubs.length === 0) return 0;
 
   const rows = await buildExportRows(exportSubs, opts.questions, opts.optionMap, opts.supabase);
-  const safe = rows.map(safeRow);
+  
+  // Don't use safeRow for all - we'll handle safety per-cell after adding hyperlinks
+  // const safe = rows.map(safeRow);
 
   // Use ExcelJS instead of XLSX (safer, no prototype pollution vulnerability)
   const ExcelJS = await import("exceljs");
@@ -220,8 +222,8 @@ export async function exportResponsesXlsx(opts: {
   const worksheet = workbook.addWorksheet("Responses");
 
   // Add header row
-  if (safe.length > 0) {
-    const headers = Object.keys(safe[0]);
+  if (rows.length > 0) {
+    const headers = Object.keys(rows[0]);
     worksheet.addRow(headers);
     
     // Make header bold
@@ -235,8 +237,10 @@ export async function exportResponsesXlsx(opts: {
   }
 
   // Add data rows and process file URLs into hyperlinks
-  safe.forEach((row) => {
-    const excelRow = worksheet.addRow(Object.values(row));
+  rows.forEach((row) => {
+    // Apply safeRow to prevent formula injection, THEN add hyperlinks
+    const safeRowData = safeRow(row);
+    const excelRow = worksheet.addRow(Object.values(safeRowData));
     
     // Convert URLs in cells to hyperlinks using ExcelJS RichText (supports multiple hyperlinks)
     excelRow.eachCell((cell) => {
