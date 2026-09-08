@@ -66,6 +66,11 @@ function ViewResponse() {
         throw rpcError;
       }
 
+      console.log("RPC Result:", result);
+      console.log("Result type:", typeof result);
+      console.log("Result keys:", result ? Object.keys(result) : "null");
+      console.log("Answers count:", result?.answers?.length ?? 0);
+      
       setData(result as SubmissionData);
     } catch (err) {
       console.error("Error loading submission:", err);

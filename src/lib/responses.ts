@@ -137,39 +137,63 @@ export async function fetchAllForExport(formId: string, filters: ResponseFilters
 }
 
 // One export row per submission: metadata columns + one column per question,
-// with choice values mapped back to their labels and file names listed for
+// with choice values mapped back to their labels and file links (downloadable URLs) for
 // upload questions.
-export function buildExportRows(
+export async function buildExportRows(
   exportSubs: ResponseSubmission[],
   questions: ResponseQuestion[],
-  optionMap: Record<string, Record<string, string>>
-): Record<string, string>[] {
-  return exportSubs.map(s => {
-    const row: Record<string, string> = {
-      "Reference ID": s.reference_id ?? "",
-      "Status": s.status ?? "",
-      "Respondent": s.respondent_name ?? "Anonymous",
-      "Submitted At": new Date(s.submitted_at).toLocaleString(),
-    };
+  optionMap: Record<string, Record<string, string>>,
+  supabase?: any  // Optional Supabase client for generating signed URLs
+): Promise<Record<string, string>[]> {
+  return Promise.all(
+    exportSubs.map(async (s) => {
+      const row: Record<string, string> = {
+        "Reference ID": s.reference_id ?? "",
+        "Status": s.status ?? "",
+        "Respondent": s.respondent_name ?? "Anonymous",
+        "Submitted At": new Date(s.submitted_at).toLocaleString(),
+      };
 
-    for (const q of questions) {
-      const answer = s.answers?.[q.id];
-      let cellValue = "";
+      for (const q of questions) {
+        const answer = s.answers?.[q.id];
+        let cellValue = "";
 
-      if (answer) {
-        cellValue = displayAnswer(answer.value, q.type, optionMap[q.id]);
-      } else {
-        const qFiles = s.files?.filter(f => f.question_id === q.id) ?? [];
-        if (qFiles.length > 0) {
-          cellValue = qFiles.map(f => f.file_name).join(", ");
+        if (answer) {
+          cellValue = displayAnswer(answer.value, q.type, optionMap[q.id]);
+        } else {
+          const qFiles = s.files?.filter(f => f.question_id === q.id) ?? [];
+          if (qFiles.length > 0) {
+            if (supabase) {
+              // Generate signed URLs for files (valid for 1 hour)
+              const fileLinks = await Promise.all(
+                qFiles.map(async (f) => {
+                  try {
+                    const { data, error } = await supabase.storage
+                      .from("submission-files")
+                      .createSignedUrl(f.file_path, 3600);
+                    if (error || !data?.signedUrl) {
+                      return f.file_name; // Fallback to filename if URL generation fails
+                    }
+                    return `${f.file_name}: ${data.signedUrl}`;
+                  } catch (err) {
+                    return f.file_name; // Fallback on error
+                  }
+                })
+              );
+              cellValue = fileLinks.join("\n");
+            } else {
+              // Fallback: just show filenames if no Supabase client
+              cellValue = qFiles.map(f => f.file_name).join(", ");
+            }
+          }
         }
+
+        row[q.label] = cellValue;
       }
 
-      row[q.label] = cellValue;
-    }
-
-    return row;
-  });
+      return row;
+    })
+  );
 }
 
 // Full XLSX export: batched fetch → label mapping → formula-injection
@@ -181,11 +205,12 @@ export async function exportResponsesXlsx(opts: {
   filters: ResponseFilters;
   questions: ResponseQuestion[];
   optionMap: Record<string, Record<string, string>>;
+  supabase?: any;  // Optional Supabase client for generating signed file URLs
 }): Promise<number> {
   const exportSubs = await fetchAllForExport(opts.formId, opts.filters);
   if (exportSubs.length === 0) return 0;
 
-  const rows = buildExportRows(exportSubs, opts.questions, opts.optionMap);
+  const rows = await buildExportRows(exportSubs, opts.questions, opts.optionMap, opts.supabase);
   const safe = rows.map(safeRow);
 
   // Use ExcelJS instead of XLSX (safer, no prototype pollution vulnerability)

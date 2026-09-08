@@ -204,6 +204,7 @@ function ResponsesList() {
         filters,
         questions,
         optionMap,
+        supabase,
       });
       if (count === 0) {
         toast.error("No responses to export");
