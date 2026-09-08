@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { safeRow, displayAnswer } from "@/lib/export-utils";
+import { displayAnswer } from "@/lib/export-utils";
 
 // Data layer for the admin Responses page: server-side fetch (search /
 // status / date-range filters live in the get_form_responses_tabular RPC),
@@ -238,42 +238,51 @@ export async function exportResponsesXlsx(opts: {
 
   // Add data rows and process file URLs into hyperlinks
   rows.forEach((row) => {
-    // Apply safeRow to prevent formula injection, THEN add hyperlinks
-    const safeRowData = safeRow(row);
-    const excelRow = worksheet.addRow(Object.values(safeRowData));
+    const excelRow = worksheet.addRow(Object.values(row));
     
     // Convert URLs in cells to hyperlinks using ExcelJS RichText (supports multiple hyperlinks)
     excelRow.eachCell((cell) => {
       const cellValue = cell.value as string;
-      if (cellValue && typeof cellValue === 'string' && cellValue.includes('https://')) {
-        // Split by newline in case multiple URLs
-        const urls = cellValue.split('\n').filter(u => u.trim() && u.startsWith('https://'));
-        
-        if (urls.length > 0) {
-          // Use RichText to support multiple hyperlinks in one cell
-          const richText: any[] = [];
+      
+      // Apply formula injection protection for non-URL cells
+      if (cellValue && typeof cellValue === 'string') {
+        // Check if this is a URL that needs hyperlink treatment
+        if (cellValue.includes('https://')) {
+          // Split by newline in case multiple URLs
+          const urls = cellValue.split('\n').filter(u => u.trim() && u.startsWith('https://'));
           
-          urls.forEach((url, idx) => {
-            richText.push({
-              font: { underline: true, color: { argb: 'FF0563C1' } },
-              text: url,
-              hyperlink: {
-                target: url,
-                tooltip: url
+          if (urls.length > 0) {
+            // Use RichText to support multiple hyperlinks in one cell
+            const richText: any[] = [];
+            
+            urls.forEach((url, idx) => {
+              richText.push({
+                font: { underline: true, color: { argb: 'FF0563C1' } },
+                text: url,
+                hyperlink: {
+                  target: url,
+                  tooltip: url
+                }
+              });
+              
+              // Add newline between URLs (except after last one)
+              if (idx < urls.length - 1) {
+                richText.push({
+                  font: { underline: false },
+                  text: '\n'
+                });
               }
             });
             
-            // Add newline between URLs (except after last one)
-            if (idx < urls.length - 1) {
-              richText.push({
-                font: { underline: false },
-                text: '\n'
-              });
-            }
-          });
-          
-          cell.value = richText as any;  // ExcelJS RichText array
-          cell.alignment = { wrapText: true, vertical: 'top' };
+            cell.value = richText as any;  // ExcelJS RichText array
+            cell.alignment = { wrapText: true, vertical: 'top' };
+          }
+        } else {
+          // Apply formula injection protection to non-URL cells
+          if (cellValue.startsWith('=')) {
+            cell.value = "'" + cellValue;  // Escape formula
+          }
+          // Otherwise keep as-is
         }
       }
     });
