@@ -3,6 +3,26 @@
 --        But public forms need anon role to call it
 --        This broke public form submissions (error: "The submission service is being upgraded")
 
+-- ─── Ensure helper function exists (created in migration 056) ───────────────
+-- If to_base64url doesn't exist, create it
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc 
+    WHERE proname = 'to_base64url' 
+    AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+  ) THEN
+    CREATE FUNCTION public.to_base64url(data bytea)
+    RETURNS text
+    LANGUAGE sql
+    IMMUTABLE
+    AS $$
+      SELECT replace(replace(replace(encode(data, 'base64'), '+', '-'), '/', '_'), '=', '');
+    $$;
+  END IF;
+END
+$$;
+
 -- ─── Fix 1: Grant execute permission to anon role ─────────────────────────
 REVOKE ALL ON FUNCTION public.submit_response(uuid, text, text, uuid, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.submit_response(uuid, text, text, uuid, jsonb) TO authenticated, anon;
