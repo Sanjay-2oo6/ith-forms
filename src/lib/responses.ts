@@ -262,27 +262,31 @@ export async function exportResponsesXlsx(opts: {
         if (urls.length > 0) {
           const cell = excelRow.getCell(cellIndex + 1) as any;
           
-          // Use ExcelJS's richText array property (the correct API)
+          // Build RichText array with hyperlinks
+          // ExcelJS richText items can have a hyperlink property
           cell.richText = urls.map((url, idx) => {
-            const parts = [];
-            parts.push({
+            const textObj: any = {
               font: { underline: true, color: { argb: 'FF0563C1' } },
-              text: url
-            });
+              text: url,
+              hyperlink: {
+                target: url,
+                tooltip: url
+              }
+            };
+            
+            const items = [textObj];
             
             // Add newline between URLs (except after last one)
             if (idx < urls.length - 1) {
-              parts.push({
+              items.push({
                 font: { underline: false },
                 text: '\n'
               });
             }
             
-            return parts;
+            return items;
           }).flat();
           
-          // Set hyperlink on the cell
-          (cell as any).hyperlink = { target: urls[0], tooltip: urls[0] };
           cell.alignment = { wrapText: true, vertical: 'top' };
         }
       }
