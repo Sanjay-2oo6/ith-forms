@@ -134,6 +134,12 @@ export function SubmissionDetailModal({
   
   // Debug logging
   console.log("Modal received questions:", sortedQuestions.length);
+  console.log("First 3 questions:", sortedQuestions.slice(0, 3).map(q => ({
+    label: q.label,
+    position: q.position,
+    section_title: q.section_title,
+    section_position: q.section_position
+  })));
   console.log("Modal submission ID:", submission.id);
   console.log("Modal answers keys:", Object.keys(submission.answers || {}));
 

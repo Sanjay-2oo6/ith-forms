@@ -238,18 +238,27 @@ export async function exportResponsesXlsx(opts: {
   safe.forEach((row) => {
     const excelRow = worksheet.addRow(Object.values(row));
     
-    // Convert URLs in cells to hyperlinks
+    // Convert URLs in cells to hyperlinks using ExcelJS API
     excelRow.eachCell((cell) => {
       const cellValue = cell.value as string;
       if (cellValue && typeof cellValue === 'string' && cellValue.startsWith('https://')) {
         // Split by newline in case multiple URLs
         const urls = cellValue.split('\n').filter(u => u.trim());
         if (urls.length >= 1) {
-          // Make first URL a hyperlink
-          cell.value = urls[0];
-          // Use the cell as a rich text with hyperlink
-          (cell as any).hyperlink = urls[0];
+          const firstUrl = urls[0];
+          cell.value = firstUrl;
           cell.font = { underline: true, color: { argb: 'FF0563C1' } };
+          
+          // Set hyperlink using the object notation that ExcelJS expects
+          try {
+            (cell as any).hyperlink = { 
+              target: firstUrl,
+              tooltip: firstUrl
+            };
+          } catch (err) {
+            // If hyperlink fails, at least the URL text and styling are there
+            console.warn('Could not set hyperlink:', err);
+          }
         }
       }
     });
