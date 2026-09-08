@@ -236,55 +236,61 @@ export async function exportResponsesXlsx(opts: {
     };
   }
 
-  // Add data rows and process file URLs into hyperlinks
+  // Add data rows with properly formatted RichText BEFORE adding to worksheet
   rows.forEach((row) => {
-    const excelRow = worksheet.addRow(Object.values(row));
+    // Build cell values with RichText formatting for URLs
+    const cellValues: any[] = [];
     
-    // Convert URLs in cells to hyperlinks using ExcelJS RichText (supports multiple hyperlinks)
-    excelRow.eachCell((cell) => {
-      const cellValue = cell.value as string;
+    for (const value of Object.values(row)) {
+      const stringValue = value as string;
       
-      // Apply formula injection protection for non-URL cells
-      if (cellValue && typeof cellValue === 'string') {
-        // Check if this is a URL that needs hyperlink treatment
-        if (cellValue.includes('https://')) {
-          // Split by newline in case multiple URLs
-          const urls = cellValue.split('\n').filter(u => u.trim() && u.startsWith('https://'));
+      // Check if this cell contains URLs
+      if (stringValue && typeof stringValue === 'string' && stringValue.includes('https://')) {
+        const urls = stringValue.split('\n').filter(u => u.trim() && u.startsWith('https://'));
+        
+        if (urls.length > 0) {
+          // Create RichText array for this cell
+          const richText: any[] = [];
           
-          if (urls.length > 0) {
-            // Use RichText to support multiple hyperlinks in one cell
-            const richText: any[] = [];
-            
-            urls.forEach((url, idx) => {
-              richText.push({
-                font: { underline: true, color: { argb: 'FF0563C1' } },
-                text: url,
-                hyperlink: {
-                  target: url,
-                  tooltip: url
-                }
-              });
-              
-              // Add newline between URLs (except after last one)
-              if (idx < urls.length - 1) {
-                richText.push({
-                  font: { underline: false },
-                  text: '\n'
-                });
+          urls.forEach((url, idx) => {
+            richText.push({
+              font: { underline: true, color: { argb: 'FF0563C1' } },
+              text: url,
+              hyperlink: {
+                target: url,
+                tooltip: url
               }
             });
             
-            cell.value = richText as any;  // ExcelJS RichText array
-            cell.alignment = { wrapText: true, vertical: 'top' };
-          }
+            // Add newline between URLs (except after last one)
+            if (idx < urls.length - 1) {
+              richText.push({
+                font: { underline: false },
+                text: '\n'
+              });
+            }
+          });
+          
+          cellValues.push(richText);
         } else {
-          // Apply formula injection protection to non-URL cells
-          if (cellValue.startsWith('=')) {
-            cell.value = "'" + cellValue;  // Escape formula
-          }
-          // Otherwise keep as-is
+          cellValues.push(stringValue);
+        }
+      } else {
+        // Regular cell - apply formula injection protection if needed
+        if (stringValue && typeof stringValue === 'string' && stringValue.startsWith('=')) {
+          cellValues.push("'" + stringValue);  // Escape formula
+        } else {
+          cellValues.push(stringValue || '');
         }
       }
+    }
+    
+    // Add row with pre-formatted values (including RichText objects)
+    const excelRow = worksheet.addRow(cellValues);
+    
+    // Set alignment for all cells in the row
+    excelRow.eachCell((cell) => {
+      cell.alignment = { wrapText: true, vertical: 'top' };
     });
   });
 
