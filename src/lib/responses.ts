@@ -238,27 +238,38 @@ export async function exportResponsesXlsx(opts: {
   safe.forEach((row) => {
     const excelRow = worksheet.addRow(Object.values(row));
     
-    // Convert URLs in cells to hyperlinks using ExcelJS API
+    // Convert URLs in cells to hyperlinks using ExcelJS RichText (supports multiple hyperlinks)
     excelRow.eachCell((cell) => {
       const cellValue = cell.value as string;
-      if (cellValue && typeof cellValue === 'string' && cellValue.startsWith('https://')) {
+      if (cellValue && typeof cellValue === 'string' && cellValue.includes('https://')) {
         // Split by newline in case multiple URLs
-        const urls = cellValue.split('\n').filter(u => u.trim());
-        if (urls.length >= 1) {
-          const firstUrl = urls[0];
-          cell.value = firstUrl;
-          cell.font = { underline: true, color: { argb: 'FF0563C1' } };
+        const urls = cellValue.split('\n').filter(u => u.trim() && u.startsWith('https://'));
+        
+        if (urls.length > 0) {
+          // Use RichText to support multiple hyperlinks in one cell
+          const richText: any[] = [];
           
-          // Set hyperlink using the object notation that ExcelJS expects
-          try {
-            (cell as any).hyperlink = { 
-              target: firstUrl,
-              tooltip: firstUrl
-            };
-          } catch (err) {
-            // If hyperlink fails, at least the URL text and styling are there
-            console.warn('Could not set hyperlink:', err);
-          }
+          urls.forEach((url, idx) => {
+            richText.push({
+              font: { underline: true, color: { argb: 'FF0563C1' } },
+              text: url,
+              hyperlink: {
+                target: url,
+                tooltip: url
+              }
+            });
+            
+            // Add newline between URLs (except after last one)
+            if (idx < urls.length - 1) {
+              richText.push({
+                font: { underline: false },
+                text: '\n'
+              });
+            }
+          });
+          
+          cell.value = richText as any;  // ExcelJS RichText array
+          cell.alignment = { wrapText: true, vertical: 'top' };
         }
       }
     });
