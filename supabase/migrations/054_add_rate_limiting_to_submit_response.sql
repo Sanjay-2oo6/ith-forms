@@ -112,10 +112,6 @@ GRANT EXECUTE ON FUNCTION public.check_submission_rate_limit(uuid, text) TO auth
 CREATE INDEX IF NOT EXISTS idx_submission_rate_limit_form_email_time 
   ON public.submission_rate_limit(form_id, email, submission_time DESC);
 
-CREATE INDEX IF NOT EXISTS idx_submission_rate_limit_cleanup 
-  ON public.submission_rate_limit(submission_time) 
-  WHERE submission_time < now() - interval '24 hours';
-
 -- ─── 5. Create cleanup function to remove old rate limit records ──────────────
 DROP FUNCTION IF EXISTS public.cleanup_old_rate_limit_records() CASCADE;
 
