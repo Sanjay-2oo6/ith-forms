@@ -28,7 +28,7 @@ CREATE OR REPLACE FUNCTION public.submit_response(
   p_name            text,
   p_email           text,
   p_idempotency_key uuid,
-  p_answers_jsonb   jsonb DEFAULT '{}'::jsonb
+  p_answers         jsonb DEFAULT '{}'::jsonb
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -178,7 +178,7 @@ BEGIN
   -- Insert all answers
   INSERT INTO public.submission_answers (submission_id, form_id, question_id, value)
     SELECT v_sub_id, p_form_id, (j->>'question_id')::uuid, j->>'answer_value'
-    FROM jsonb_array_elements(p_answers_jsonb) AS j
+    FROM jsonb_array_elements(p_answers) AS j
     WHERE (j->>'question_id')::uuid IN (
       SELECT id FROM public.form_questions
       WHERE form_id = p_form_id);
@@ -211,7 +211,6 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
--- Grant permission: ONLY authenticated users can call
 REVOKE ALL ON FUNCTION public.submit_response(uuid, text, text, uuid, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.submit_response(uuid, text, text, uuid, jsonb) TO authenticated;
 
