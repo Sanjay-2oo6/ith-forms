@@ -177,7 +177,7 @@ BEGIN
 
   -- Insert all answers
   INSERT INTO public.submission_answers (submission_id, form_id, question_id, value)
-    SELECT v_sub_id, p_form_id, (j->>'question_id')::uuid, j->>'answer_value'
+    SELECT v_sub_id, p_form_id, (j->>'question_id')::uuid, j->>'value'
     FROM jsonb_array_elements(p_answers) AS j
     WHERE (j->>'question_id')::uuid IN (
       SELECT id FROM public.form_questions
