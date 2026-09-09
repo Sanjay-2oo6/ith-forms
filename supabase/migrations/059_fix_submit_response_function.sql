@@ -3,6 +3,9 @@
 -- Root cause: Function may have syntax errors or missing dependencies
 -- Solution: Recreate the function cleanly, keeping authentication required
 
+-- ─── Enable pgcrypto extension for gen_random_bytes ───────────────────────
+CREATE EXTENSION IF NOT EXISTS pgcrypto SCHEMA extensions;
+
 -- ─── Ensure helper function exists (created in migration 056) ───────────────
 DO $$
 BEGIN
@@ -151,7 +154,7 @@ BEGIN
   END IF;
 
   -- Generate secure token
-  v_token := public.to_base64url(gen_random_bytes(24));
+  v_token := public.to_base64url(extensions.gen_random_bytes(24));
 
   -- Create submission record
   INSERT INTO public.submissions (
