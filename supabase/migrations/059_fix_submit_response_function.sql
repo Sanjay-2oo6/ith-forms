@@ -1,24 +1,7 @@
 -- Migration 059: Fix submit_response() function
 -- Issue: submit_response() is failing with "The submission service is being upgraded"
--- Root cause: Function may have syntax errors or missing dependencies
--- Solution: Recreate the function cleanly, keeping authentication required
-
--- ─── Enable pgcrypto extension for gen_random_bytes ───────────────────────
-CREATE EXTENSION IF NOT EXISTS pgcrypto SCHEMA extensions;
-
--- ─── Ensure helper function exists (created in migration 056) ───────────────
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_proc 
-    WHERE proname = 'to_base64url' 
-    AND pronamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
-  ) THEN
-    EXECUTE 'CREATE FUNCTION public.to_base64url(data bytea) RETURNS text LANGUAGE sql IMMUTABLE AS $func$ SELECT replace(replace(replace(encode(data, ''base64''), ''+'' , ''-''), ''/'', ''_''), ''='', ''''); $func$';
-    GRANT EXECUTE ON FUNCTION public.to_base64url(bytea) TO authenticated, anon;
-  END IF;
-END
-$$;
+-- Root cause: gen_random_bytes() not accessible with search_path = public
+-- Solution: Use md5() + gen_random_uuid() like migration 033
 
 -- ─── Clean recreate of submit_response() ──────────────────────────────────
 -- Authentication is REQUIRED - user must sign in with Google first
@@ -153,8 +136,9 @@ BEGIN
       'duplicate',     true);
   END IF;
 
-  -- Generate secure token
-  v_token := public.to_base64url(extensions.gen_random_bytes(24));
+  -- Generate secure token - use md5 which is always available
+  -- Combines multiple UUIDs for 128-bit entropy
+  v_token := md5(gen_random_uuid()::text || gen_random_uuid()::text || now()::text);
 
   -- Create submission record
   INSERT INTO public.submissions (
@@ -190,7 +174,7 @@ BEGIN
   INSERT INTO public.verified_emails (form_id, email, submission_count)
     VALUES (p_form_id, LOWER(p_email), 1)
     ON CONFLICT (form_id, email) DO UPDATE
-    SET submission_count = submission_count + 1;
+    SET submission_count = verified_emails.submission_count + 1;
 
   -- Record submission for rate limiting
   INSERT INTO public.submission_rate_limit (form_id, email, submission_time)

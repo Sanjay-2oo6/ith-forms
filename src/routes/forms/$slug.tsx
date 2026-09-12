@@ -667,18 +667,17 @@ function PublicForm() {
             </div>
           )}
           {confirmEmail && (
-            <p className="text-xs text-muted-foreground mt-4">
-              Your reference ID is linked to <span className="font-semibold text-foreground">{confirmEmail}</span> —
-              we'll use it for any follow-up about this submission.
+            <p className="text-xs text-muted-foreground mt-4 px-4">
+              Your reference ID is linked to <span className="font-semibold text-foreground break-all">{confirmEmail}</span> — we'll use it for any follow-up about this submission.
             </p>
           )}
           {/* ITEM 8: Link to view submission later */}
           {referenceToken && (
-            <div className="mt-6 p-4 rounded-lg border border-border bg-secondary/20">
+            <div className="mt-6 p-4 rounded-lg border border-border bg-secondary/20 mx-4 sm:mx-0">
               <p className="text-sm font-medium mb-2">View your submission anytime</p>
               <a 
                 href={`/view-response/${referenceToken}`}
-                className="text-sm text-primary hover:underline break-all"
+                className="text-sm text-primary hover:underline break-all block"
                 target="_blank"
                 rel="noopener noreferrer"
               >
