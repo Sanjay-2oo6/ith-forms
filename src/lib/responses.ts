@@ -302,15 +302,54 @@ export async function exportResponsesXlsx(opts: {
     });
   });
 
-  // Auto-fit columns
+  // Auto-fit columns with minimum and maximum widths
   worksheet.columns.forEach((column) => {
     let maxLength = 0;
     column.eachCell?.({ includeEmpty: true }, (cell) => {
       const cellLength = String(cell.value).length;
       if (cellLength > maxLength) maxLength = cellLength;
     });
-    column.width = Math.min(maxLength + 2, 50);
+    // Set width: minimum 12, maximum 60, with padding
+    column.width = Math.max(12, Math.min(maxLength + 3, 60));
   });
+
+  // Add text wrapping to all cells for better readability
+  worksheet.eachRow((row) => {
+    row.eachCell((cell) => {
+      cell.alignment = { 
+        wrapText: true, 
+        vertical: 'top',
+        horizontal: 'left'
+      };
+      // Add borders to all cells for clarity
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+        left: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+        bottom: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+        right: { style: 'thin', color: { argb: 'FFD3D3D3' } },
+      };
+    });
+  });
+
+  // Set header row background color and make text bold
+  const headerRow = worksheet.getRow(1);
+  headerRow.height = 40;
+  headerRow.eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4472C4' }, // Professional blue
+    };
+    cell.alignment = { 
+      wrapText: true, 
+      vertical: 'center',
+      horizontal: 'center'
+    };
+  });
+
+  // Freeze header row
+  worksheet.views = [{ state: 'frozen', ySplit: 1 }];
 
   const fileName = `${opts.slug ?? opts.formId}-responses.xlsx`;
 
