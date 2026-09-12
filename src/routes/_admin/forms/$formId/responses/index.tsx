@@ -8,7 +8,7 @@ import { Loader2, ArrowLeft, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/ConfirmDialog";
 import {
-  fetchTabular, exportResponsesXlsx, buildOptionMap,
+  fetchTabular, exportResponsesXlsx, exportResponsesCsv, buildOptionMap,
   DateFilterUnsupportedError, PAGE_SIZE,
   type ResponseSubmission, type TabularData, type ResponseFilters,
 } from "@/lib/responses";
@@ -210,7 +210,34 @@ function ResponsesList() {
         toast.error("No responses to export");
         return;
       }
-      toast.success(`Exported ${count} response${count !== 1 ? "s" : ""}`);
+      toast.success(`Exported ${count} response${count !== 1 ? "s" : ""} to Excel`);
+    } catch (err) {
+      if (err instanceof DateFilterUnsupportedError) {
+        toast.warning(err.message);
+        return;
+      }
+      toast.error(err instanceof Error ? err.message : "Export failed");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function exportCsv() {
+    setExporting(true);
+    try {
+      const count = await exportResponsesCsv({
+        formId,
+        slug: form?.slug ?? null,
+        filters,
+        questions,
+        optionMap,
+        supabase,
+      });
+      if (count === 0) {
+        toast.error("No responses to export");
+        return;
+      }
+      toast.success(`Exported ${count} response${count !== 1 ? "s" : ""} to CSV`);
     } catch (err) {
       if (err instanceof DateFilterUnsupportedError) {
         toast.warning(err.message);
@@ -239,14 +266,24 @@ function ResponsesList() {
               {hasFilters ? " (filtered)" : ""}
             </p>
           </div>
-          <button
-            onClick={exportExcel}
-            disabled={exporting || total === 0}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-60"
-          >
-            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            Export {hasFilters ? "Filtered" : "All"} ({total})
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportExcel}
+              disabled={exporting || total === 0}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-60"
+            >
+              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Export Excel
+            </button>
+            <button
+              onClick={exportCsv}
+              disabled={exporting || total === 0}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-medium hover:bg-secondary disabled:opacity-60"
+            >
+              {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Export CSV
+            </button>
+          </div>
         </div>
 
         <ResponsesFilterBar

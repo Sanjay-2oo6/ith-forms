@@ -356,6 +356,85 @@ export async function exportResponsesXlsx(opts: {
   return exportSubs.length;
 }
 
+// CSV export: Similar to Excel but simpler format
+export async function exportResponsesCsv(opts: {
+  formId: string;
+  slug: string | null;
+  filters: ResponseFilters;
+  questions: ResponseQuestion[];
+  optionMap: Record<string, Record<string, string>>;
+  supabase?: any;
+}): Promise<number> {
+  const exportSubs = await fetchAllForExport(opts.formId, opts.filters);
+  if (exportSubs.length === 0) return 0;
+
+  const rows = await buildExportRows(exportSubs, opts.questions, opts.optionMap, opts.supabase);
+
+  // Build CSV content
+  if (rows.length === 0) return 0;
+
+  const headers = Object.keys(rows[0]);
+  const csvRows: string[] = [];
+
+  // Add header row
+  csvRows.push(headers.map(h => escapeCsvCell(h)).join(','));
+
+  // Add data rows
+  rows.forEach(row => {
+    const values = headers.map(h => escapeCsvCell(row[h] || ''));
+    csvRows.push(values.join(','));
+  });
+
+  const csvContent = csvRows.join('\n');
+  const fileName = `${opts.slug ?? opts.formId}-responses.csv`;
+
+  // Create blob and download
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+
+  // Best-effort: Save export metadata to storage
+  try {
+    const storagePath = `exports/${opts.formId}/${fileName}`;
+    const { error: upErr } = await supabase.storage
+      .from("submission-files")
+      .upload(storagePath, blob, { upsert: true });
+    
+    if (!upErr) {
+      await supabase.from("submission_files").insert({
+        form_id: opts.formId,
+        submission_id: null,
+        question_id: null,
+        file_path: storagePath,
+        file_name: fileName,
+        file_size: blob.size,
+        mime_type: "text/csv",
+      });
+    }
+  } catch (err) {
+    console.error("Failed to track export file:", err);
+  }
+
+  return exportSubs.length;
+}
+
+// Helper to escape CSV cells (handles quotes, commas, newlines)
+function escapeCsvCell(value: string): string {
+  if (!value) return '""';
+  const stringValue = String(value);
+  // If contains comma, quote, or newline, wrap in quotes and escape internal quotes
+  if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+  return stringValue;
+}
+
 // value→label lookup for every choice question of a form (F1: admins see
 // "HR Executive", not "hr_executive").
 export function buildOptionMap(
