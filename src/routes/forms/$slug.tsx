@@ -655,35 +655,37 @@ function PublicForm() {
         </div>
 
         {/* Success message & Reference ID */}
-        <div className="text-center mb-8">
-          <div className="text-4xl mb-4">✅</div>
-          <h2 className="text-2xl font-bold mb-2">{form.confirmation_title ?? "Thank you!"}</h2>
-          <p className="text-muted-foreground mb-6">{form.confirmation_message ?? "Your response has been received."}</p>
+        <div className="mb-8">
+          <div className="text-center">
+            <div className="text-4xl mb-4">✅</div>
+            <h2 className="text-2xl font-bold mb-2">{form.confirmation_title ?? "Thank you!"}</h2>
+            <p className="text-muted-foreground mb-6">{form.confirmation_message ?? "Your response has been received."}</p>
+          </div>
           {referenceId && (
-            <div className="inline-block bg-primary/10 border border-primary/30 rounded-xl px-6 py-4 mb-4">
-              <p className="text-xs text-muted-foreground mb-1">Your reference ID</p>
-              <p className="text-2xl font-bold font-mono tracking-wider text-primary">{referenceId}</p>
-              <p className="text-xs text-muted-foreground mt-1">Keep this for your records</p>
+            <div className="bg-primary/10 border border-primary/30 rounded-xl px-4 sm:px-6 py-4 mb-4 max-w-full">
+              <p className="text-xs text-muted-foreground mb-1 text-center">Your reference ID</p>
+              <p className="text-xl sm:text-2xl font-bold font-mono tracking-wider text-primary text-center break-all">{referenceId}</p>
+              <p className="text-xs text-muted-foreground mt-1 text-center">Keep this for your records</p>
             </div>
           )}
           {confirmEmail && (
-            <p className="text-xs text-muted-foreground mt-4 px-4">
+            <p className="text-xs text-muted-foreground mt-4 text-center">
               Your reference ID is linked to <span className="font-semibold text-foreground break-all">{confirmEmail}</span> — we'll use it for any follow-up about this submission.
             </p>
           )}
           {/* ITEM 8: Link to view submission later */}
           {referenceToken && (
-            <div className="mt-6 p-4 rounded-lg border border-border bg-secondary/20 mx-4 sm:mx-0">
-              <p className="text-sm font-medium mb-2">View your submission anytime</p>
+            <div className="mt-6 p-4 rounded-lg border border-border bg-secondary/20">
+              <p className="text-sm font-medium mb-2 text-center">View your submission anytime</p>
               <a 
                 href={`/view-response/${referenceToken}`}
-                className="text-sm text-primary hover:underline break-all block"
+                className="text-xs sm:text-sm text-primary hover:underline break-all block text-center"
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 {typeof window !== 'undefined' ? window.location.origin : ''}/view-response/{referenceToken}
               </a>
-              <p className="text-xs text-muted-foreground mt-2">Save this link to review your answers later</p>
+              <p className="text-xs text-muted-foreground mt-2 text-center">Save this link to review your answers later</p>
             </div>
           )}
         </div>
