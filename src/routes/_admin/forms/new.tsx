@@ -15,7 +15,10 @@ export const Route = createFileRoute("/_admin/forms/new")({
 });
 
 function slugify(s: string) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const base = s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  // Add 8-character random suffix for security (prevents URL guessing)
+  const random = Math.random().toString(36).substring(2, 10);
+  return `${base}-${random}`;
 }
 
 function NewForm() {
