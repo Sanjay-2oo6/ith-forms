@@ -77,8 +77,9 @@ export function themeContainerStyle(
     const overlayOpacity = Math.min(0.75, Math.max(0.40, rawOverlay));
     const overlay = rgba(t.background_color ?? "#0b0b16", overlayOpacity);
     style.backgroundImage = `linear-gradient(${overlay}, ${overlay}), url("${safeBgUrl}")`;
-    style.backgroundSize = "cover";
+    style.backgroundSize = "contain"; // Show entire image without cropping
     style.backgroundPosition = "center";
+    style.backgroundRepeat = "no-repeat"; // Don't repeat the image
     style.backgroundAttachment = "fixed";
   }
   return style;
