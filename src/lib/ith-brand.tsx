@@ -34,7 +34,12 @@ export const IthLogo = memo(function IthLogo({
       <img
         src="/ith-logo.svg"
         alt={`${appName} logo`}
-        style={{ width: size, height: size }}
+        style={{ 
+          width: size, 
+          height: size,
+          objectFit: 'contain',
+          objectPosition: 'center'
+        }}
         className="shrink-0"
         onError={(e) => {
           // Prevent error events from propagating and causing re-renders
