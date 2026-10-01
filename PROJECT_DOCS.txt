@@ -1,0 +1,323 @@
+# ITH FORMS - COMPLETE PROJECT DOCUMENTATION
+# ============================================
+# Generated: 2026-10-01
+# Status: Production Ready
+# Version: 1.0
+
+## PROJECT OVERVIEW
+====================
+Form builder + response collection app for InnoTech-Hub.
+- Admins: Build and publish forms
+- Public: Submit responses via public link
+- Admins: Review, track statuses, export data (Excel, CSV)
+
+## TECH STACK
+=============
+- Frontend: React 19 + TanStack Start/Router/Query
+- Styling: Tailwind v4 (design tokens in src/styles.css)
+- Backend: Supabase (Postgres + Auth + Storage)
+- Validation: Zod
+- Drag-Drop: @dnd-kit
+- Excel Export: ExcelJS
+- CSV Export: Custom implementation
+- Error Tracking: Sentry (optional)
+- Testing: Vitest + Playwright
+
+## COMMANDS
+===========
+npm run dev        → Vite dev server on port 3000
+npm run build      → Production build (TanStack Start / Nitro)
+npm run typecheck  → TypeScript type checking (strict mode)
+npm test           → Vitest unit tests
+npm run test:rpc   → Integration tests vs Supabase
+npm run test:e2e   → Playwright E2E tests
+npm run loadtest   → Public submission load test
+
+## ARCHITECTURE
+===============
+- NO custom backend - browser talks directly to Supabase
+- Admin: Authenticated session via RLS policies
+- Public: Read forms via anon RLS, write via submit_response RPC only
+- File uploads: Private submission-files bucket + register_submission_file RPC
+- Security: SECURITY DEFINER RPCs, RLS policies, CSP headers
+- Theme system: CSS custom properties, glassmorphism, dark/light modes
+
+## KEY PATHS
+============
+src/routes/_admin/              → Admin pages (auth-gated)
+src/routes/forms/$slug.tsx      → Public form renderer (CRITICAL FILE)
+src/components/form-builder/    → Builder UI components
+src/components/responses/       → Response management (pagination, filters, exports)
+src/lib/validation.ts           → Zod schemas for forms, submissions, config
+src/lib/responses.ts            → Response logic, Excel/CSV export
+src/lib/theme-utils.ts          → Theme system (background images, colors)
+supabase/migrations/            → Database migrations (run manually in SQL Editor)
+docs/                           → Technical documentation
+
+## CRITICAL MIGRATIONS (Run in Order)
+=====================================
+001-005: Setup (init, audit logging, security policies)
+006-014: Core (dashboard stats, responses, admin user management)
+015-018: Config + Fixes ⚠️ DUPLICATE NUMBERS - see note below
+019-059: Modern features (date filters, builder save, audit actions, rate limiting, etc.)
+060+: Future migrations (conditional logic, etc.)
+
+### IMPORTANT: Migrations 015-018 Have Duplicate Numbers
+Two parallel development tracks created duplicate numbers:
+- Track A (fixes): 015_expand_audit_actions, 016_fix_double_increment, 017_fix_checkbox_delimiter, 018_validate_scale_values
+- Track B (config): 015_file_upload_configuration, 016_linear_scale_configuration, 017_question_config, 018_reset_reference_sequences
+
+All migrations are idempotent - safe to run all 8 files.
+Next new migration: 060_add_conditional_logic.sql
+
+## CURRENT PROJECT STATUS
+=========================
+✅ Core form builder functional
+✅ Public form submission working (idempotent with rate limiting)
+✅ Response management + exports (Excel with formatting, CSV)
+✅ Google OAuth sign-in integrated
+✅ File upload with validation (PDF, DOCX, images)
+✅ Grid/matrix question type fully implemented
+✅ Rate limiting on submissions (migration 054)
+✅ Audit logging system comprehensive
+✅ Mobile responsive
+✅ Security hardened (RLS + SECURITY DEFINER RPCs)
+
+⏳ Conditional logic (section branching) - Planning phase
+⏳ Bulk delete responses - Needs implementation
+
+## SECURITY MODEL
+=================
+1. Supabase URL + ANON_KEY are PUBLIC by design ✅ SAFE
+2. All security via RLS policies + SECURITY DEFINER RPCs
+3. Public can ONLY call submit_response() RPC (no direct table writes)
+4. Admin tables gated by is_admin() RLS policy
+5. SERVICE_ROLE_KEY never exposed in frontend (server-only)
+6. CSP headers enforce content security
+7. Rate limiting prevents spam (5 submissions per minute per email)
+8. Idempotency keys prevent duplicate submissions
+9. File uploads validated (size, type, path sanitization)
+
+### What Attackers CAN'T Do (Even with Supabase URL + Anon Key)
+- ❌ Read other users' submissions
+- ❌ Modify existing submissions
+- ❌ Delete submissions
+- ❌ Access admin data
+- ❌ Bypass form limits or rate limits
+- ❌ Submit invalid data (Zod + DB constraints)
+- ❌ Access SERVICE_ROLE_KEY
+- ❌ Bypass RLS policies
+
+## AUTHENTICATION FLOW
+======================
+Admin Login:
+1. Admin logs in via Google OAuth (admin/login page)
+2. Supabase redirects to Google consent screen
+3. Google redirects back to Supabase callback URL
+4. Supabase validates code, creates session
+5. App stores session in localStorage
+6. Admin can now access admin routes
+
+Public Forms:
+1. Anonymous user opens form link
+2. Form data loaded via anon RLS policy
+3. Optional: Click "Sign in with Google" for verification
+4. Session stored in sessionStorage (form-specific)
+5. Submission includes verified_email if authenticated
+
+## CONVENTIONS
+==============
+- Route components own state (no global state beyond TanStack Query)
+- No Redux/Zustand - TanStack Query cache IS the state
+- Query keys: ["form-meta", formId], ["responses-tabular", ...], ["option-map", formId]
+- Debounced saves (600ms) in form builder
+- All admin mutations → audit_logs row
+- Toasts (sonner) for user-facing errors
+- Comments explain WHY, not what
+- Tailwind utilities only - no custom CSS (except design tokens in styles.css)
+
+## THINGS THAT WILL BITE YOU
+============================
+- NEVER give anon users direct table write access (use RPCs only)
+- CSP keeps 'unsafe-inline' WITHOUT nonce (with nonce breaks vite-plugin-react)
+- forms.response_count is trigger-maintained (no manual updates needed)
+- Reference IDs are per-form: {ABBR}-{form-prefix}-{00001}
+- Choice answers store VALUES (map to labels via optionMap in exports)
+- Checkbox multi-values use || delimiter (not comma, for CSV compatibility)
+- Background images: Use contain (not cover) to show entire image
+- Google OAuth: Supabase callback URL must be in Google Cloud authorized URIs
+
+## CURRENT ACTIVE RPCS
+======================
+submit_response                 → Public form submission (idempotent, rate-limited)
+register_submission_file        → File upload registration with validation
+get_form_responses_tabular      → Paginated responses with filters
+save_form_builder               → Atomic builder save (questions + sections)
+get_dashboard_stats             → Admin dashboard metrics
+get_submission_detail           → Full submission details with file URLs
+get_submission_by_reference     → Lookup by reference ID
+
+## FILE STRUCTURE
+=================
+/docs                  → Technical docs (migrations, security, testing)
+/e2e                   → Playwright E2E tests
+/public                → Static assets
+/scripts               → Utility scripts (load-test.mjs, run_migrations.mjs)
+/src
+  /components          → Reusable UI components
+    /form-builder      → Builder-specific components
+    /responses         → Response management components
+  /integrations
+    /supabase          → Supabase client + generated types
+  /lib                 → Utility functions + business logic
+    validation.ts      → Zod schemas
+    responses.ts       → Response logic, Excel/CSV export
+    theme-utils.ts     → Theme system
+  /routes              → TanStack Router file-based routes
+    /_admin            → Admin-only routes (auth-gated)
+    /forms             → Public form routes
+  /styles.css          → Tailwind v4 + design tokens
+/supabase
+  /migrations          → SQL migration files (run manually)
+/tests                 → Vitest unit tests
+
+## IMPORTANT FILES (DO NOT DELETE)
+==================================
+README.md                      → Project overview + setup guide
+PROJECT_DOCS.txt               → This file (consolidated documentation)
+.env                           → Environment variables (NEVER commit!)
+.env.example                   → Template for environment variables
+package.json                   → Dependencies + scripts
+supabase/migrations/*.sql      → Database schema evolution
+src/routes/__root.tsx          → App root + error boundary
+src/routes/forms/$slug.tsx     → Public form renderer (CRITICAL)
+
+## TESTING CHECKLIST
+====================
+Before deploying changes:
+[ ] npm run typecheck passes
+[ ] npm test passes (unit tests)
+[ ] npm run build succeeds
+[ ] Manual test: Create form in builder
+[ ] Manual test: Fill + submit public form
+[ ] Manual test: View responses in admin
+[ ] Manual test: Export to Excel (check formatting)
+[ ] Manual test: Export to CSV (check escaping)
+[ ] Manual test: Mobile responsive
+[ ] Check browser console for errors
+[ ] Check Supabase logs for errors
+
+## KNOWN ISSUES / TECH DEBT
+===========================
+1. Legacy question-config columns (file_config, scale_config unused)
+2. Audit action CHECK constraint churn (consider lookup table)
+3. Theme presets hardcoded in frontend (could be DB table)
+4. Global reference ID sequence unused (forms have their own sequences)
+5. Manual admin provisioning (could add invite RPC)
+6. Bulk delete responses missing (admin wants this feature)
+7. Conditional logic not yet implemented (planning phase complete)
+
+## NEXT FEATURES (ROADMAP)
+==========================
+Phase 1: Conditional Logic (Section Branching) - Planning Complete
+  - Show/hide sections based on answers
+  - Multi-option branching (each option → different section)
+  - Status: Ready to implement
+  - Implementation: 6-8 hours, 5 phases
+
+Phase 2: Bulk Operations
+  - Bulk delete responses
+  - Bulk status change (already implemented)
+  - Bulk export selected responses
+
+Phase 3: Advanced Question Types
+  - Signature field
+  - Date range picker
+  - Star rating
+  - Matrix with multiple choice per cell
+
+Phase 4: Notifications & Automation
+  - Email notifications on submission
+  - Webhook integration
+  - Auto-responder emails
+
+Phase 5: Analytics
+  - Response analytics dashboard
+  - Completion rate tracking
+  - Drop-off analysis
+
+## ENVIRONMENT VARIABLES
+========================
+Required:
+  VITE_SUPABASE_URL=https://your-project.supabase.co
+  VITE_SUPABASE_ANON_KEY=[public-anon-key] (✅ Safe to expose)
+  SUPABASE_SERVICE_ROLE_KEY=[secret-key] (❌ NEVER expose in frontend)
+
+Optional:
+  VITE_SENTRY_DSN=[sentry-dsn]
+  SENTRY_DSN=[sentry-dsn] (server-side)
+
+Future:
+  VITE_ENABLE_CONDITIONAL_LOGIC=false (default)
+
+## TROUBLESHOOTING
+==================
+Common Issues:
+
+1. "Function gen_random_bytes does not exist"
+   → Use md5(gen_random_uuid()::text) instead
+   → Migration 059 fixes this
+
+2. "Column reference submission_count is ambiguous"
+   → Qualify with table name: verified_emails.submission_count
+   → Migration 059 fixes this
+
+3. Google OAuth Error 400: redirect_uri_mismatch
+   → Add callback URL to Google Cloud authorized URIs
+   → Wait 5-10 minutes for Google cache to update
+
+4. CSV/Excel export button not visible
+   → Hard refresh browser (Ctrl+Shift+R)
+   → Clear browser cache
+
+5. Background image not showing entire PNG
+   → Use background-size: contain (not cover)
+   → Add background-repeat: no-repeat
+
+## DEPLOYMENT
+=============
+Platform: Vercel (auto-deploy from GitHub main branch)
+Database: Supabase Postgres
+Auth: Supabase Auth (Google OAuth)
+Storage: Supabase Storage (submission-files bucket, private)
+Git: GitHub repository
+
+Deployment process:
+1. Push to main branch
+2. Vercel auto-builds (TanStack Start + Nitro)
+3. Environment variables set in Vercel dashboard
+4. Hard refresh browser after deploy (Ctrl+Shift+R)
+
+## SUPPORT & MAINTENANCE
+========================
+Database: Supabase dashboard → https://app.supabase.com
+Hosting: Vercel dashboard → https://vercel.com
+Logs: Supabase → Logs tab, SQL Editor
+
+## IMPORTANT CONVENTIONS FOR AI AGENTS
+======================================
+- This project uses ITH Forms conventions
+- Always run migrations in Supabase SQL Editor (manual execution)
+- Test changes incrementally (phase by phase)
+- Use feature flags for risky changes
+- Keep backward compatibility (never break existing forms)
+- Document all breaking changes
+- Follow canonical migration order (001→002→...)
+- Never expose SERVICE_ROLE_KEY in frontend code
+- Read existing code before making changes
+- Match project style and patterns
+- Write complete, working code (not placeholders)
+- Verify changes don't break existing features
+
+## END OF DOCUMENTATION
+=======================

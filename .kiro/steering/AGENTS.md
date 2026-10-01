@@ -1,8 +1,17 @@
-# AGENTS.md — ITH Forms
+﻿# AGENTS.md — ITH Forms
 
 Form builder + response collection app for InnoTech-Hub. Admins build and
 publish forms; anyone with the public link submits responses; admins review,
 track statuses, and export.
+
+**IMPORTANT:** Comprehensive project documentation is now consolidated in
+`PROJECT_DOCS.txt` at the project root. Refer to it for:
+- Full architecture details
+- Security model
+- Deployment procedures
+- Migration history and order
+- Implementation plans (conditional logic, etc.)
+- Troubleshooting guides
 
 ## Commands
 
@@ -12,10 +21,10 @@ track statuses, and export.
 | `npm run build` | Production build (TanStack Start / Nitro) |
 | `npm run typecheck` | `tsc --noEmit` (strict mode) |
 | `npm test` | Vitest unit tests (`src/**/*.test.ts`) |
-| `npm run test:rpc` | Integration tests vs the REAL Supabase project — opt-in, writes fixtures (see `docs/testing.md`) |
-| `npm run test:e2e` | Playwright E2E (needs `E2E_ADMIN_EMAIL/PASSWORD`; see `e2e/`) |
+| `npm run test:rpc` | Integration tests vs the REAL Supabase project |
+| `npm run test:e2e` | Playwright E2E (needs `E2E_ADMIN_EMAIL/PASSWORD`) |
 | `npm run test:visual` | Playwright visual regression (needs `E2E_PUBLIC_SLUG`) |
-| `npm run loadtest` | Public-submission load test (needs `LT_FORM_ID`, `LT_CONFIRM=yes`; see `docs/load-testing.md`) |
+| `npm run loadtest` | Public-submission load test (needs `LT_FORM_ID`, `LT_CONFIRM=yes`) |
 
 ## Stack
 
@@ -50,7 +59,7 @@ server-side). `src/server.ts` only adds security headers (CSP) and `/health`.
   `SubmitPayloadSchema`), uuid fallback, file checks
 - `src/lib/duplicate-form.ts` — form cloning (sections/questions/theme)
 - `supabase/migrations/` — run MANUALLY in the SQL editor, in order; see
-  `docs/migrations.md` for the numbering conflicts and canonical order
+  `PROJECT_DOCS.txt` for the numbering conflicts and canonical order
 - `docs/` — RPC API, schema, deployment, security, testing, load-testing
 
 ## Conventions (follow these)
@@ -81,4 +90,5 @@ server-side). `src/server.ts` only adds security headers (CSP) and `/health`.
 - Choice answers store option *values*; UI/export map value→label through
   `optionMap` (`buildOptionMap`). Checkbox multi-values join with `||`.
 - Migrations have duplicate numbers (two 015/016/017/018 files). Canonical
-  order and rationale: `docs/migrations.md`. Next free number: 022.
+  order and rationale: `PROJECT_DOCS.txt`. Next free number: 022.
+
