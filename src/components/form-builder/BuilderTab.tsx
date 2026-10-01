@@ -66,6 +66,8 @@ export function BuilderTab({ sections, questions, onAddSection, onUpdateSection,
                 invalid={invalidSectionIds.includes(sec.id)}
                 onReorderQuestions={(a, b) => onReorderQuestions(sec.id, a, b)}
                 confirm={confirm}
+                allQuestions={questions}
+                allSections={sections}
               />
               {/* Fix #3: Add Section inserts immediately after current section */}
               <button onClick={() => onAddSection(sec.position)}

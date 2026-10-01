@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// Re-export types from form-builder for logic engine
+export type { LogicRule, Question, Section } from "@/components/form-builder/types";
+
 // Generate a valid RFC-4122 v4 UUID.
 //
 // crypto.randomUUID() only exists in SECURE contexts (HTTPS or localhost). When

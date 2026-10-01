@@ -343,7 +343,7 @@ export async function exportResponsesXlsx(opts: {
     };
     cell.alignment = { 
       wrapText: true, 
-      vertical: 'center',
+      vertical: 'middle',
       horizontal: 'center'
     };
   });

@@ -11,6 +11,15 @@ export type Section = {
   position: number;
 };
 
+// Conditional logic rule (Phase 1)
+export type LogicRule = {
+  id: string;                      // Unique rule ID
+  condition: "equals";             // Phase 1: only "equals" supported
+  value: string;                   // Value to match against
+  action: "show_section";          // Phase 1: only "show_section" supported
+  target_section_id: string;       // Section to show when condition matches
+};
+
 export type QuestionConfig = {
   accept?: string[]; maxFiles?: number; maxSizeMB?: number; // file (#11)
   ratingMax?: number;                            // rating
@@ -25,6 +34,7 @@ export type QuestionConfig = {
     pendingType?: string;
     oldPath?: string;
   }; // #10 question media
+  logic_rules?: LogicRule[];                     // Conditional logic (Phase 1)
 };
 
 export type Question = {

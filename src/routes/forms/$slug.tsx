@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { useLocation } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { IthLogo, useBranding } from "@/lib/ith-brand";
 import { SubmitPayloadSchema, uuidv4, fileSizeCheck } from "@/lib/validation";
 import { themeContainerStyle, type FormTheme } from "@/lib/theme-utils";
 import { useAuth, useAuthSubmissionStatus } from "@/lib/use-auth";
+import { evaluateLogicRules } from "@/lib/logic-engine";
 import { Loader2, Upload, X, AlertCircle, Eye, CheckCircle2, LogOut } from "lucide-react";
 import { z } from "zod";
 
@@ -324,8 +325,17 @@ function PublicForm() {
     });
   }, []);
 
+  // Conditional Logic Evaluation (Phase 1)
+  // Evaluate logic rules to determine which sections/questions should be visible
+  const { visibleSectionIds, hiddenQuestionIds } = useMemo(() => {
+    return evaluateLogicRules(answers, questions, sections);
+  }, [answers, questions, sections]);
+
+  // Filter sections to only show visible ones
+  const visibleSections = sections.filter(s => visibleSectionIds.has(s.id));
+  
   // Sections that actually contain questions — the pagination steps.
-  const stepSections = sections;
+  const stepSections = visibleSections;
   const multi = stepSections.length > 1;
   // #13: never let the step index run past the last section — an out-of-range
   // step made slice() return [] (blank page that looked like a skip-to-submit).
@@ -376,6 +386,11 @@ function PublicForm() {
   function collectErrors(qs: Question[]): Record<string, string> {
     const errs: Record<string, string> = {};
     for (const q of qs) {
+      // Skip hidden questions (conditional logic)
+      if (hiddenQuestionIds.has(q.id)) {
+        continue;
+      }
+      
       if (requiredMissing(q)) { errs[q.id] = "This field is required"; continue; }
       const value = answers[q.id];
       const cfg = q.config ?? {};
@@ -483,8 +498,10 @@ function PublicForm() {
     const respondentName = authSession.name || null;
 
     // Build the answers payload for the RPC (file and display types excluded)
+    // Also exclude hidden questions (conditional logic)
     const answerPayload = questions
       .filter(q => !["section_heading","information_paragraph","hidden",...FILE_TYPES].includes(q.type))
+      .filter(q => !hiddenQuestionIds.has(q.id)) // Skip hidden questions
       .flatMap(q => {
         const v = answers[q.id];
         if (v == null || (Array.isArray(v) && v.length === 0)) return [];

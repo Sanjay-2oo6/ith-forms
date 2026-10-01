@@ -9,7 +9,8 @@ import { toast } from "sonner";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { ConfirmFn } from "@/components/ConfirmDialog";
-import type { Question, QuestionConfig } from "./types";
+import type { Question, QuestionConfig, Section } from "./types";
+import { LogicRuleEditor } from "./LogicRuleEditor";
 
 const CATEGORIES = [...new Set(QUESTION_TYPES.map(q => q.category))];
 const CHOICE = ["dropdown", "radio", "checkbox", "poll"];
@@ -18,13 +19,15 @@ export const MemoQuestionCard = React.memo(QuestionCard, (prev, next) => {
   return prev.question === next.question && prev.isNew === next.isNew;
 });
 
-export function QuestionCard({ question, onUpdate, onDelete, isNew, onMounted, confirm }: {
+export function QuestionCard({ question, onUpdate, onDelete, isNew, onMounted, confirm, allQuestions, allSections }: {
   question: Question;
   onUpdate: (p: Partial<Question>) => void;
   onDelete: () => void;
   isNew?: boolean;
   onMounted?: () => void;
   confirm: ConfirmFn;
+  allQuestions: Question[];
+  allSections: Section[];
 }) {
   const hasOptions = CHOICE.includes(question.type);
   const cfg = question.config ?? {};
@@ -177,6 +180,17 @@ export function QuestionCard({ question, onUpdate, onDelete, isNew, onMounted, c
 
             {/* Per-type configuration (requirements #4/#5/#6) */}
             <ConfigEditor type={question.type} cfg={cfg} setCfg={setCfg} />
+            
+            {/* Conditional Logic Editor (Phase 1) */}
+            <div className="pt-4 border-t border-border/30">
+              <LogicRuleEditor
+                questionId={question.id}
+                rules={cfg.logic_rules || []}
+                onChange={(rules) => setCfg({ logic_rules: rules })}
+                allQuestions={allQuestions}
+                allSections={allSections}
+              />
+            </div>
           </div>
 
           {/* RIGHT SIDE: Question Type Selector (30%) */}

@@ -14,7 +14,7 @@ import type { Question, Section } from "./types";
 
 const CATEGORIES = [...new Set(QUESTION_TYPES.map(q => q.category))];
 
-export function SectionBlock({ section, questions, canDelete, onUpdate, onDelete, onAddQuestion, onAddTemplate, onUpdateQuestion, onDeleteQuestion, atLimit, lastAddedId, onClearLastAdded, isNew, onMounted, invalid, onReorderQuestions, confirm }: {
+export function SectionBlock({ section, questions, canDelete, onUpdate, onDelete, onAddQuestion, onAddTemplate, onUpdateQuestion, onDeleteQuestion, atLimit, lastAddedId, onClearLastAdded, isNew, onMounted, invalid, onReorderQuestions, confirm, allQuestions, allSections }: {
   section: Section;
   questions: Question[];
   canDelete: boolean;
@@ -32,6 +32,8 @@ export function SectionBlock({ section, questions, canDelete, onUpdate, onDelete
   invalid?: boolean;
   onReorderQuestions: (activeId: string, overId: string) => void;
   confirm: ConfirmFn;
+  allQuestions: Question[];
+  allSections: Section[];
 }) {
   const [pickerRect, setPickerRect] = useState<DOMRect | null>(null);
   const qSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -62,19 +64,28 @@ export function SectionBlock({ section, questions, canDelete, onUpdate, onDelete
         invalid ? "border-destructive ring-2 ring-destructive/40" : "border-border/60"
       }`}
     >
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border/40 bg-secondary/30">
+      <div className="flex items-start gap-3 px-4 py-3 border-b border-border/40 bg-secondary/30">
         <button {...attributes} {...listeners}
           className="cursor-grab active:cursor-grabbing touch-none p-0.5 -m-0.5"
           title="Drag to reorder section">
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </button>
-        <input
-          ref={titleRef}
-          value={section.title}
-          onChange={e => onUpdate({ title: e.target.value })}
-          className="flex-1 font-semibold bg-transparent border-none outline-none text-sm"
-          placeholder="Section title"
-        />
+        <div className="flex-1 flex flex-col gap-1">
+          <input
+            ref={titleRef}
+            value={section.title}
+            onChange={e => onUpdate({ title: e.target.value })}
+            className="font-semibold bg-transparent border-none outline-none text-sm"
+            placeholder="Section title"
+          />
+          <textarea
+            value={section.description ?? ''}
+            onChange={e => onUpdate({ description: e.target.value })}
+            className="bg-transparent border-none outline-none text-sm text-muted-foreground resize-none"
+            placeholder="Add an optional description for this section..."
+            rows={2}
+          />
+        </div>
         {canDelete && (
           <button onClick={onDelete} className="p-1 hover:text-destructive transition-colors" aria-label="Delete section">
             <Trash2 className="h-4 w-4" />
@@ -101,6 +112,8 @@ export function SectionBlock({ section, questions, canDelete, onUpdate, onDelete
                 isNew={lastAddedId === q.id}
                 onMounted={onClearLastAdded}
                 confirm={confirm}
+                allQuestions={allQuestions}
+                allSections={allSections}
               />
             ))}
           </SortableContext>
