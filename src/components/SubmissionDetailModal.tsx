@@ -37,6 +37,7 @@ type Question = {
   position: number;
   section_title: string | null;
   section_position?: number;  // Added to track section order
+  config?: { paymentUrl?: string; [key: string]: any };  // Added for payment question support
 };
 
 interface SubmissionDetailModalProps {
@@ -330,11 +331,21 @@ export function SubmissionDetailModal({
                     <div className="mt-2 w-full min-w-0">
                       {question.type === "payment" ? (
                         <div className="space-y-2">
-                          <p className="text-sm text-muted-foreground">
-                            Payment URL: <a href="#" className="text-primary hover:underline">View Payment Page</a>
-                          </p>
+                          {question.config?.paymentUrl && (
+                            <p className="text-sm text-muted-foreground">
+                              Payment URL:{" "}
+                              <a
+                                href={question.config.paymentUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline"
+                              >
+                                {question.config.paymentUrl}
+                              </a>
+                            </p>
+                          )}
                           <p className="text-sm text-muted-foreground bg-secondary/30 rounded-lg p-3 border border-border/40">
-                            {questionFiles.length > 0 ? "Payment completed - screenshot uploaded" : "No proof uploaded"}
+                            {questionFiles.length > 0 ? "✓ Payment completed - screenshot uploaded" : "No proof uploaded"}
                           </p>
                         </div>
                       ) : answer ? (

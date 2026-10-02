@@ -11,6 +11,7 @@ import { CSS } from "@dnd-kit/utilities";
 import type { ConfirmFn } from "@/components/ConfirmDialog";
 import type { Question, QuestionConfig, Section } from "./types";
 import { LogicRuleEditor } from "./LogicRuleEditor";
+import { AutoExpandTextarea } from "./AutoExpandTextarea";
 
 const CATEGORIES = [...new Set(QUESTION_TYPES.map(q => q.category))];
 const CHOICE = ["dropdown", "radio", "checkbox", "poll"];
@@ -144,12 +145,11 @@ export function QuestionCard({ question, onUpdate, onDelete, isNew, onMounted, c
               <label className="block text-xs font-medium text-muted-foreground mb-1.5">
                 Description (optional)
               </label>
-              <textarea
+              <AutoExpandTextarea
                 value={question.description ?? ""}
                 onChange={e => onUpdate({ description: e.target.value || null })}
-                className="w-full text-sm rounded-lg border border-input bg-card px-3 py-2 outline-none focus:ring-1 focus:ring-ring resize-none"
+                className="w-full text-sm rounded-lg border border-input bg-card px-3 py-2 outline-none focus:ring-1 focus:ring-ring"
                 placeholder="Add help text or additional context"
-                rows={2}
               />
             </div>
 
@@ -523,15 +523,15 @@ function ConfigEditor({ type, cfg, setCfg }: {
     return (
       <div className="space-y-3">
         <div className="space-y-2">
-          <label className="text-xs text-muted-foreground">Payment URL</label>
+          <label className="text-xs text-muted-foreground">
+            Payment URL <span className="text-destructive">*</span>
+          </label>
           <input
             type="url"
             value={urlValue}
             onChange={e => {
-              const value = e.target.value;
-              if (!value || isValidUrl(value)) {
-                setCfg({ paymentUrl: value });
-              }
+              // Always allow typing, save all values
+              setCfg({ paymentUrl: e.target.value });
             }}
             placeholder="https://example.com/payment"
             className={`w-full text-xs rounded border px-2 py-1 outline-none focus:ring-1 focus:ring-ring ${
@@ -540,12 +540,19 @@ function ConfigEditor({ type, cfg, setCfg }: {
           />
           {urlError && (
             <p className="text-[11px] text-destructive flex items-center gap-1">
-              Only http:// and https:// URLs are allowed
+              ⚠️ Only http:// and https:// URLs are allowed. The Pay Now button will not appear until you enter a valid URL.
             </p>
           )}
-          <p className="text-[11px] text-muted-foreground">
-            Users will be redirected here when they click Pay Now
-          </p>
+          {!urlValue && (
+            <p className="text-[11px] text-muted-foreground">
+              Enter a payment URL. The Pay Now button will only appear when a valid URL is configured.
+            </p>
+          )}
+          {urlValue && !urlError && (
+            <p className="text-[11px] text-muted-foreground">
+              ✓ Users will be redirected here when they click Pay Now
+            </p>
+          )}
         </div>
         {media}
       </div>

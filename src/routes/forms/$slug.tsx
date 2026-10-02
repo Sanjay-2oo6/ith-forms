@@ -1392,27 +1392,36 @@ function QuestionField({ question: q, value, error, onChange }: {
       {/* Payment question — Pay Now button + screenshot upload */}
       {q.type === "payment" && (
         <div className="space-y-4">
-          {/* Pay Now button */}
-          <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                  Complete Payment
-                </p>
-                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                  Click below to proceed to payment gateway
-                </p>
+          {/* Pay Now button - only show if valid URL is configured */}
+          {q.config?.paymentUrl && (() => {
+            try {
+              const url = new URL(q.config.paymentUrl);
+              return url.protocol === 'http:' || url.protocol === 'https:';
+            } catch {
+              return false;
+            }
+          })() && (
+            <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                    Complete Payment
+                  </p>
+                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                    Click below to proceed to payment gateway
+                  </p>
+                </div>
+                <a
+                  href={q.config.paymentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  Pay Now
+                </a>
               </div>
-              <a
-                href={q.config?.paymentUrl || "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-              >
-                Pay Now
-              </a>
             </div>
-          </div>
+          )}
           
           {/* Screenshot upload */}
           <div>

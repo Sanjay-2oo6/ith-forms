@@ -39,9 +39,19 @@ export function SectionBlock({ section, questions, canDelete, onUpdate, onDelete
   const qSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const containerRef = useRef<HTMLDivElement | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
   // Section itself is sortable inside the BuilderTab DndContext.
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
+
+  // Auto-resize description textarea based on content
+  useEffect(() => {
+    const textarea = descriptionRef.current;
+    if (!textarea) return;
+    
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+  }, [section.description]);
 
   // A freshly added section can land far below the fold on a long form —
   // without this scroll+focus the header's "Add section" click looked like
@@ -70,7 +80,7 @@ export function SectionBlock({ section, questions, canDelete, onUpdate, onDelete
           title="Drag to reorder section">
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </button>
-        <div className="flex-1 flex flex-col gap-1">
+        <div className="flex-1 flex flex-col gap-2">
           <input
             ref={titleRef}
             value={section.title}
@@ -78,12 +88,21 @@ export function SectionBlock({ section, questions, canDelete, onUpdate, onDelete
             className="font-semibold bg-transparent border-none outline-none text-sm"
             placeholder="Section title"
           />
+          
           <textarea
+            ref={descriptionRef}
             value={section.description ?? ''}
-            onChange={e => onUpdate({ description: e.target.value })}
-            className="bg-transparent border-none outline-none text-sm text-muted-foreground resize-none"
+            onChange={e => {
+              onUpdate({ description: e.target.value });
+              // Immediate resize on input
+              if (descriptionRef.current) {
+                descriptionRef.current.style.height = 'auto';
+                descriptionRef.current.style.height = descriptionRef.current.scrollHeight + 'px';
+              }
+            }}
+            className="w-full bg-card border border-border/40 rounded-lg px-3 py-2 text-sm text-muted-foreground whitespace-pre-wrap resize-none overflow-hidden min-h-[80px] focus:ring-2 focus:ring-ring focus:border-transparent outline-none"
             placeholder="Add an optional description for this section..."
-            rows={2}
+            rows={3}
           />
         </div>
         {canDelete && (

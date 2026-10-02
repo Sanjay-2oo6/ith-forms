@@ -1,11 +1,10 @@
 {
   "verdict": "CHANGES_REQUESTED",
   "findings": [
-    "Payment URL XSS vulnerability — paymentUrl accepts any string without validation, could enable XSS attacks via javascript: or data: URLs. Add URL validation in the config editor.",
-    "Missing conditional logic support — LogicRuleEditor.tsx doesn't handle payment question types, preventing admins from creating logic rules based on payment completion. Add payment to CHOICE_ANSWER_TYPES or create payment-specific logic handling.",
-    "Incomplete payment validation — Required payment questions can be submitted without uploaded screenshots since FILE_TYPES validation only checks file existence, not payment completion. Add payment-specific validation logic.",
-    "Direct public URL exposure — Payment screenshot images use getPublicUrl() in SubmissionDetailModal, bypassing the existing file access pattern used elsewhere in the app. Verify this doesn't expose files inappropriately.",
-    "Missing migration reference — Migration 061 adds the payment enum value but isn't referenced in the migration tracking that other files use for canonical ordering."
+    "URL validation bypass — Payment URL input only validates on onChange, allowing invalid URLs to be saved through paste operations or programmatic input that bypass the validation check.",
+    "Missing validation feedback — Pay Now button renders conditionally based on URL validity, but users get no feedback when the button is hidden due to an invalid URL, creating confusion about why payment isn't available.",
+    "Duplicate display line — SubmissionDetailModal.tsx contains a duplicated 'Payment URL: View Payment Page' line at line 334, indicating a copy-paste error.",
+    "Incomplete payment workflow — The system only tracks screenshot presence but provides no mechanism to verify actual payment completion against payment providers or mark payments as verified by administrators."
   ],
   "reviewDoc": "d:\\ITHub\\ith-forms\\.agents\\tasks\\payment-review.md"
 }

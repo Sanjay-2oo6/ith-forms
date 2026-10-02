@@ -1,5 +1,6 @@
 import { Field, inputCls, textareaCls } from "@/components/ui";
 import type { BuilderForm } from "./types";
+import { AutoExpandTextarea } from "./AutoExpandTextarea";
 
 // Convert a UTC ISO string to the value expected by <input type="datetime-local">
 // (which always wants local time). Using toISOString() on a Date gives UTC, so
@@ -28,9 +29,12 @@ export function SettingsTab({ form, onChange }: { form: BuilderForm; onChange: (
             placeholder="Form title" className={inputCls + " h-9"} />
         </Field>
         <Field label="Description">
-          <textarea value={form.description ?? ""} onChange={e => onChange({ description: e.target.value || null })}
-            rows={3} placeholder="Brief description of the form (shown below the title)"
-            className={textareaCls} />
+          <AutoExpandTextarea
+            value={form.description ?? ""}
+            onChange={e => onChange({ description: e.target.value || null })}
+            placeholder="Brief description of the form (shown below the title)"
+            className={textareaCls}
+          />
         </Field>
       </div>
 
@@ -75,18 +79,24 @@ export function SettingsTab({ form, onChange }: { form: BuilderForm; onChange: (
             placeholder="Thank you!" className={inputCls + " h-9"} />
         </Field>
         <Field label="Thank-you message">
-          <textarea value={form.confirmation_message ?? ""} onChange={e => onChange({ confirmation_message: e.target.value || null })}
-            rows={3} placeholder="Your response has been received."
-            className={textareaCls} />
+          <AutoExpandTextarea
+            value={form.confirmation_message ?? ""}
+            onChange={e => onChange({ confirmation_message: e.target.value || null })}
+            placeholder="Your response has been received."
+            className={textareaCls}
+          />
         </Field>
       </div>
 
       <div className="rounded-xl border border-border/60 bg-card p-5 space-y-4">
         <h2 className="font-semibold">Consent & Notice</h2>
         <Field label="Consent / privacy notice text">
-          <textarea value={form.consent_text ?? ""} onChange={e => onChange({ consent_text: e.target.value || null })}
-            rows={3} placeholder="By submitting this form, you agree to…"
-            className={textareaCls} />
+          <AutoExpandTextarea
+            value={form.consent_text ?? ""}
+            onChange={e => onChange({ consent_text: e.target.value || null })}
+            placeholder="By submitting this form, you agree to…"
+            className={textareaCls}
+          />
         </Field>
       </div>
     </div>
