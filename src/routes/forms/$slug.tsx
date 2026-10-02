@@ -679,7 +679,6 @@ function PublicForm() {
         {/* Success message & Reference ID */}
         <div className="mb-8">
           <div className="text-center">
-            <div className="text-4xl mb-4">✅</div>
             <h2 className="text-2xl font-bold mb-2">{form.confirmation_title ?? "Thank you!"}</h2>
             <p className="text-muted-foreground mb-6">{form.confirmation_message ?? "Your response has been received."}</p>
           </div>
