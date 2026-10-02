@@ -507,6 +507,51 @@ function ConfigEditor({ type, cfg, setCfg }: {
     );
   }
 
+  if (type === "payment") {
+    const isValidUrl = (url: string) => {
+      try {
+        const parsed = new URL(url);
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+      } catch {
+        return false;
+      }
+    };
+    
+    const urlValue = cfg.paymentUrl ?? "";
+    const urlError = urlValue && !isValidUrl(urlValue);
+    
+    return (
+      <div className="space-y-3">
+        <div className="space-y-2">
+          <label className="text-xs text-muted-foreground">Payment URL</label>
+          <input
+            type="url"
+            value={urlValue}
+            onChange={e => {
+              const value = e.target.value;
+              if (!value || isValidUrl(value)) {
+                setCfg({ paymentUrl: value });
+              }
+            }}
+            placeholder="https://example.com/payment"
+            className={`w-full text-xs rounded border px-2 py-1 outline-none focus:ring-1 focus:ring-ring ${
+              urlError ? 'border-destructive bg-destructive/10' : 'border-input bg-card'
+            }`}
+          />
+          {urlError && (
+            <p className="text-[11px] text-destructive flex items-center gap-1">
+              Only http:// and https:// URLs are allowed
+            </p>
+          )}
+          <p className="text-[11px] text-muted-foreground">
+            Users will be redirected here when they click Pay Now
+          </p>
+        </div>
+        {media}
+      </div>
+    );
+  }
+
   // All remaining types: media only.
   return media;
 }

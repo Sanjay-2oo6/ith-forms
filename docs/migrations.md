@@ -33,8 +33,8 @@ duplicate pairs:
    `016_linear_scale_configuration.sql` creates — the canonical order below
    respects that.
 
-**Going forward: the next migration number is 024** (022 is
-`022_save_form_builder.sql`, 023 is `023_audit_actions_canonical.sql`).
+**Going forward: the next migration number is 062** (061 is
+`061_add_payment_question_type.sql`).
 Never reuse a number; check this file and the folder before numbering.
 
 ## Canonical apply order (fresh environment)
@@ -67,6 +67,7 @@ Never reuse a number; check this file and the folder before numbering.
 021_responses_date_filter.sql       ← current get_form_responses_tabular
 022_save_form_builder.sql           ← atomic builder save RPC + upsert-aware 25-limit trigger
 023_audit_actions_canonical.sql     ← current audit action CHECK (adds form.updated etc.)
+061_add_payment_question_type.sql   ← adds 'payment' question type to support payment workflows
 ```
 
 "Which version of a function is live?" — the LAST file in this order that

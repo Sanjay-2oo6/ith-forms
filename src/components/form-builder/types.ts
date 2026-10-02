@@ -26,6 +26,7 @@ export type QuestionConfig = {
   minLength?: number; maxLength?: number;        // text
   minSelections?: number; maxSelections?: number;// checkbox
   rows?: string[]; cols?: string[];              // grid
+  paymentUrl?: string;                           // payment
   media?: {
     path?: string;
     kind: "image" | "video";

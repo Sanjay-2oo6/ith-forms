@@ -6,6 +6,7 @@ export type QuestionType =
   | "number" | "date" | "time" | "datetime" | "rating" | "linear_scale"
   | "dropdown" | "radio" | "checkbox" | "yes_no" | "poll" | "consent" | "grid"
   | "file" | "document" | "image"
+  | "payment"
   | "section_heading" | "information_paragraph" | "hidden";
 
 // Only these types are offered in the form builder (requirement #5).
@@ -24,10 +25,11 @@ export const QUESTION_TYPES: { type: QuestionType; label: string; category: stri
   { type: "time",       label: "Time",                category: "Date & Time" },
   { type: "rating",     label: "Rating",              category: "Scale" },
   { type: "file",       label: "File Upload",         category: "File" },
+  { type: "payment",    label: "Payment",             category: "Payment" },
 ];
 
 export const CHOICE_TYPES: QuestionType[] = ["dropdown", "radio", "checkbox", "poll"];
-export const FILE_TYPES: QuestionType[] = ["file", "document", "image"];
+export const FILE_TYPES: QuestionType[] = ["file", "document", "image", "payment"];
 export const DISPLAY_TYPES: QuestionType[] = ["section_heading", "information_paragraph", "hidden"];
 
 // Default and bounds for the Rating type (requirement #5: default 1–10).

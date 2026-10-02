@@ -35,6 +35,9 @@ export function LogicRuleEditor({
   const question = allQuestions.find(q => q.id === questionId);
   const hasOptions = question && ['dropdown', 'radio', 'checkbox', 'poll', 'yes_no'].includes(question.type);
   
+  // Payment questions don't have user-selectable answer values for conditional logic
+  const isPaymentQuestion = question?.type === 'payment';
+  
   function addRule() {
     const newRule: LogicRule = {
       id: uuidv4(),
@@ -54,18 +57,25 @@ export function LogicRuleEditor({
     onChange(rules.filter(r => r.id !== ruleId));
   }
   
-  // Can't add logic if no targetable sections
-  if (targetableSections.length === 0) {
+  // Can't add logic if no targetable sections or if this is a payment question
+  if (targetableSections.length === 0 || isPaymentQuestion) {
+    const message = isPaymentQuestion 
+      ? "Payment questions cannot be used for conditional logic"
+      : "No sections available";
+    const description = isPaymentQuestion
+      ? "Payment questions don't have selectable answer values that can trigger conditional logic rules."
+      : "Add more sections after this question to enable conditional logic.";
+      
     return (
       <div className="rounded-lg border border-border/40 bg-secondary/10 p-4">
         <div className="flex items-start gap-2">
           <AlertCircle className="h-5 w-5 text-muted-foreground mt-0.5" />
           <div>
             <p className="text-sm font-medium text-foreground">
-              No sections available
+              {message}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Add more sections after this question to enable conditional logic.
+              {description}
             </p>
           </div>
         </div>

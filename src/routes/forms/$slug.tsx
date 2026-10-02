@@ -29,6 +29,7 @@ type QConfig = {
   minLength?: number; maxLength?: number;
   minSelections?: number; maxSelections?: number;
   rows?: string[]; cols?: string[];
+  paymentUrl?: string;
   media?: { path: string; kind: "image" | "video" };
 };
 type Question = {
@@ -43,7 +44,7 @@ type FormState = "loading" | "unavailable" | "upcoming" | "closed" | "limit" | "
 // Types that render as a simple text/email/tel/number input
 const TEXT_TYPES = ["short_text","email","phone","url","number","name","address","organization"];
 // Types that are file uploads
-const FILE_TYPES = ["file","document","image"];
+const FILE_TYPES = ["file","document","image","payment"];
 
 // ── URL pre-fill (?name=John&email=john@example.com) ─────────────────────────
 // Query params may pre-populate COMPATIBLE questions only: plain text-like
@@ -350,6 +351,10 @@ function PublicForm() {
       const rows = q.config?.rows ?? [];
       const grid = parseGrid(val as string | undefined);
       return rows.some(r => !grid[r]);
+    }
+    if (q.type === "payment") {
+      // Required payment → must have uploaded screenshot files
+      return !val || (Array.isArray(val) && val.length === 0);
     }
     return !val || (typeof val === "string" && !val.trim()) || (Array.isArray(val) && val.length === 0);
   }
@@ -717,15 +722,26 @@ function PublicForm() {
                 const answer = answers[q.id];
                 if (!answer) return null;
                 
+                // Helper to map option values to labels for choice questions
+                const mapOptionValue = (value: string): string => {
+                  if (['radio', 'dropdown', 'checkbox', 'poll', 'yes_no'].includes(q.type)) {
+                    const option = q.options.find(opt => opt.value === value);
+                    return option ? option.label : value;
+                  }
+                  return value;
+                };
+                
                 let displayValue: string;
                 if (Array.isArray(answer)) {
                   if (answer.length > 0 && answer[0] instanceof File) {
                     displayValue = (answer as File[]).map(f => f.name).join(', ');
                   } else {
-                    displayValue = (answer as string[]).join(', ');
+                    // Map checkbox values to labels
+                    displayValue = (answer as string[]).map(mapOptionValue).join(', ');
                   }
                 } else {
-                  displayValue = String(answer);
+                  // Map single value to label
+                  displayValue = mapOptionValue(String(answer));
                 }
                 
                 return (
@@ -933,7 +949,7 @@ function PublicForm() {
               {/* Section title and description: Only shown at the start of this section */}
               <div className="border-b border-border/40 pb-2">
                 <h2 className="font-semibold text-lg">{sec.title}</h2>
-                {sec.description && <p className="text-sm text-muted-foreground">{sec.description}</p>}
+                {sec.description && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{sec.description}</p>}
               </div>
               {/* Section questions */}
               {sectionQs.map(q => (
@@ -1353,7 +1369,7 @@ function QuestionField({ question: q, value, error, onChange }: {
       )}
 
       {/* File upload — single file, accept from config (default pdf/docx/jpg/jpeg/png) */}
-      {FILE_TYPES.includes(q.type) && (
+      {FILE_TYPES.includes(q.type) && q.type !== "payment" && (
         <>
           {typeof window !== "undefined" && (() => {
             const cfgAccept = q.config?.accept;
@@ -1371,6 +1387,48 @@ function QuestionField({ question: q, value, error, onChange }: {
             onChange={files => onChange(files)}
           />
         </>
+      )}
+
+      {/* Payment question — Pay Now button + screenshot upload */}
+      {q.type === "payment" && (
+        <div className="space-y-4">
+          {/* Pay Now button */}
+          <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  Complete Payment
+                </p>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                  Click below to proceed to payment gateway
+                </p>
+              </div>
+              <a
+                href={q.config?.paymentUrl || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                Pay Now
+              </a>
+            </div>
+          </div>
+          
+          {/* Screenshot upload */}
+          <div>
+            <p className="text-sm font-medium text-foreground mb-2">
+              Upload Payment Screenshot
+            </p>
+            <FileUploader
+              id={`input-${q.id}`}
+              files={(value as File[]) ?? []}
+              accept=".jpg,.jpeg,.png"
+              acceptExts={[".jpg", ".jpeg", ".png"]}
+              maxSizeMB={10}
+              onChange={files => onChange(files)}
+            />
+          </div>
+        </div>
       )}
 
       {q.type === "consent" && (

@@ -44,6 +44,10 @@ export function displayAnswer(
 ): string {
   if (rawValue == null || rawValue === "") return "";
   if (questionType === "consent") return rawValue === "agreed" ? "Agreed" : rawValue;
+  if (questionType === "payment") {
+    // For payment questions, rawValue is the file path or empty
+    return rawValue ? "Payment completed - screenshot uploaded" : "No proof uploaded";
+  }
   // Grid answers are a JSON object { row: column } → "Row: Column" lines.
   if (questionType === "grid") {
     try {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Calendar, User, Mail, FileText, Download, ExternalLink, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { displayAnswer } from "@/lib/export-utils";
@@ -48,6 +48,79 @@ interface SubmissionDetailModalProps {
 }
 
 const STATUSES = ["new", "under_review", "approved", "rejected", "more_info_required", "archived"];
+
+function PaymentScreenshotPreview({ file }: { file: FileInfo }) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadImage() {
+      try {
+        const { data, error } = await supabase.storage
+          .from('submission-files')
+          .createSignedUrl(file.file_path, 3600);
+        
+        if (error || !data?.signedUrl) {
+          console.error('Failed to create signed URL for payment screenshot:', error);
+          setImageUrl(null);
+        } else {
+          setImageUrl(data.signedUrl);
+        }
+      } catch (err) {
+        console.error('Error loading payment screenshot:', err);
+        setImageUrl(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadImage();
+  }, [file.file_path]);
+
+  if (loading) {
+    return (
+      <div className="flex-1 space-y-2">
+        <div className="flex items-center gap-3">
+          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{file.file_name}</p>
+            <p className="text-xs text-muted-foreground">
+              {(file.file_size / 1024).toFixed(1)} KB · {file.mime_type}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center h-48 bg-secondary/20 rounded border border-border/40">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 space-y-2">
+      <div className="flex items-center gap-3">
+        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">{file.file_name}</p>
+          <p className="text-xs text-muted-foreground">
+            {(file.file_size / 1024).toFixed(1)} KB · {file.mime_type}
+          </p>
+        </div>
+      </div>
+      {imageUrl ? (
+        <img 
+          src={imageUrl}
+          alt="Payment screenshot"
+          className="max-h-48 w-auto rounded border border-border/40"
+        />
+      ) : (
+        <div className="flex items-center justify-center h-32 bg-secondary/20 rounded border border-border/40 text-sm text-muted-foreground">
+          Failed to load image
+        </div>
+      )}
+    </div>
+  );
+}
 const STATUS_COLORS: Record<string, string> = {
   new: "bg-blue-500/20 text-blue-400 border-blue-500/30",
   under_review: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
@@ -255,7 +328,16 @@ export function SubmissionDetailModal({
 
                     {/* Answer — choice values mapped to labels (F1/F6) */}
                     <div className="mt-2 w-full min-w-0">
-                      {answer ? (
+                      {question.type === "payment" ? (
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">
+                            Payment URL: <a href="#" className="text-primary hover:underline">View Payment Page</a>
+                          </p>
+                          <p className="text-sm text-muted-foreground bg-secondary/30 rounded-lg p-3 border border-border/40">
+                            {questionFiles.length > 0 ? "Payment completed - screenshot uploaded" : "No proof uploaded"}
+                          </p>
+                        </div>
+                      ) : answer ? (
                         <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words word-break bg-secondary/30 rounded-lg p-3 border border-border/40 w-full overflow-hidden">
                           {displayAnswer(answer.value, question.type, optionMap?.[question.id])}
                         </p>
@@ -267,19 +349,27 @@ export function SubmissionDetailModal({
                     {/* Files */}
                     {questionFiles.length > 0 && (
                       <div className="mt-3 space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">Attached files:</p>
+                        <p className="text-xs font-medium text-muted-foreground">
+                          {question.type === "payment" ? "Payment screenshot:" : "Attached files:"}
+                        </p>
                         {questionFiles.map((file) => (
                           <div
                             key={file.file_path}
                             className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30 border border-border/40"
                           >
-                            <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{file.file_name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {(file.file_size / 1024).toFixed(1)} KB · {file.mime_type}
-                              </p>
-                            </div>
+                            {question.type === "payment" && file.mime_type?.startsWith("image/") ? (
+                              <PaymentScreenshotPreview file={file} />
+                            ) : (
+                              <>
+                                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">{file.file_name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {(file.file_size / 1024).toFixed(1)} KB · {file.mime_type}
+                                  </p>
+                                </div>
+                              </>
+                            )}
                             <button
                               onClick={() => openFile(file)}
                               disabled={fileBusy !== null}
