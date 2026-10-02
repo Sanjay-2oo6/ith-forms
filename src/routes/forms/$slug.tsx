@@ -673,7 +673,7 @@ function PublicForm() {
         <div className="text-center mb-8 pb-8 border-b border-border/40">
           <p className="text-xs text-muted-foreground mb-1">Submission for</p>
           <h1 className="text-3xl font-bold mb-2">{form.title}</h1>
-          {form.description && <p className="text-sm text-muted-foreground">{form.description}</p>}
+          {form.description && <p className="text-sm text-muted-foreground whitespace-pre-wrap">{form.description}</p>}
         </div>
 
         {/* Success message & Reference ID */}
@@ -923,7 +923,7 @@ function PublicForm() {
         {/* Form description: Only show once at the very start (on first step or first section) */}
         {form.description && safeStep === 0 && (
           <div className="space-y-2 pb-4 border-b border-border/40">
-            <p className="text-sm text-muted-foreground">{form.description}</p>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{form.description}</p>
           </div>
         )}
 
