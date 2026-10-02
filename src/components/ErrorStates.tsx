@@ -15,7 +15,8 @@ function StateShell({ children }: { children: React.ReactNode }) {
 }
 
 // Route-level error boundary — replaces the white screen / bare 500.
-export function AppErrorFallback({ error }: { error: Error }) {
+export function AppErrorFallback({ error }: { error: unknown }) {
+  const errorMessage = error instanceof Error ? error.message : String(error);
   return (
     <StateShell>
       <AlertTriangle className="h-8 w-8 text-destructive mx-auto mb-3" />
@@ -25,7 +26,7 @@ export function AppErrorFallback({ error }: { error: Error }) {
         happening, contact the administrator.
       </p>
       <p className="text-[11px] font-mono text-muted-foreground/70 mb-5 break-all">
-        {error?.message ?? "Unknown error"}
+        {errorMessage || "Unknown error"}
       </p>
       <button
         onClick={() => window.location.reload()}
