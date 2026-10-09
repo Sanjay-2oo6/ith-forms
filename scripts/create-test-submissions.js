@@ -3,16 +3,28 @@
 /**
  * Script to create 50 test submissions for the job-applications form
  * Run with: node scripts/create-test-submissions.js
+ * 
+ * Requires environment variables:
+ * - VITE_SUPABASE_URL
+ * - VITE_SUPABASE_ANON_KEY
  */
 
 const https = require('https');
 const { v4: uuidv4 } = require('uuid');
+require('dotenv').config();
 
-// Configuration
-const SUPABASE_URL = 'https://zkaeourngxwykkhapotj.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprYWVvdXJuZ3h3eWtraGFwb3RqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUxNjg4MDEsImV4cCI6MjEwMDc0NDgwMX0.73H3JRqvojytktdNdI1T7w13Pg7f5mcEClNw8daQnCs';
+// Configuration from environment variables
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 const FORM_SLUG = 'job-applications';
 const NUM_SUBMISSIONS = 50;
+
+// Validate environment variables
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('❌ Error: Missing required environment variables');
+  console.error('Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file');
+  process.exit(1);
+}
 
 // Sample data
 const firstNames = [
@@ -54,8 +66,9 @@ const experienceLevels = [0, 1, 2, 3, 5, 7, 10, 15, 20];
 // Helper function to make HTTPS request
 function makeRequest(method, path, data = null) {
   return new Promise((resolve, reject) => {
+    const supabaseHost = new URL(SUPABASE_URL).hostname;
     const options = {
-      hostname: 'zkaeourngxwykkhapotj.supabase.co',
+      hostname: supabaseHost,
       port: 443,
       path: path,
       method: method,
