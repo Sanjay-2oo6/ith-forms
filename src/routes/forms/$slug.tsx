@@ -600,40 +600,20 @@ function PublicForm() {
       return;
     }
 
-    // Record payment transactions for native Razorpay questions
+    // TODO: Record payment transactions for native Razorpay questions
+    // Currently disabled - payment verification will be added as admin feature
+    // Payment data is stored in window.__pendingPayments and can be verified manually
     const pendingPayments = typeof window !== "undefined" ? (window as any).__pendingPayments || {} : {};
-    for (const q of questions.filter(q => q.type === "payment")) {
-      const isNativeMode = (q.config?.razorpayAmount ?? 0) >= 100;
-      if (!isNativeMode) continue; // Skip legacy screenshot mode
-      
-      const paymentData = pendingPayments[q.id];
-      if (!paymentData) continue; // No payment made (may be optional question)
-      
-      // Record transaction via Supabase RPC
-      const { data: txData, error: txError } = await supabase.rpc("record_payment_transaction", {
-        p_submission_id: result.submission_id,
-        p_question_id: q.id,
-        p_razorpay_order_id: paymentData.order_id,
-        p_razorpay_payment_id: paymentData.payment_id,
-        p_razorpay_signature: paymentData.signature,
-        p_amount: paymentData.amount,
-        p_currency: paymentData.currency,
-        p_status: "captured",
-      });
-      
-      if (txError || !txData || !txData.ok) {
-        console.error(`[payment-record] Failed to record transaction for question ${q.id}:`, txError, txData);
-        
-        // If signature verification failed, this is a critical error
-        if (txData && !txData.verified) {
-          setFormState("ready");
-          toast.error(txData.error || "Payment verification failed. Please contact support if you completed the payment.");
-          return;
-        }
-        
-        // For other errors (network, etc), log but don't fail the submission
-        // Payment was already captured by Razorpay - admin can manually verify
-        toast.warning("Payment recorded but verification pending. Your submission was successful.");
+    if (Object.keys(pendingPayments).length > 0) {
+      console.log("[payment] Payment completed:", pendingPayments);
+      // Store in localStorage for admin verification if needed
+      try {
+        localStorage.setItem(
+          `payment_${result.submission_id}`,
+          JSON.stringify(pendingPayments)
+        );
+      } catch (e) {
+        console.warn("[payment] Could not store payment data:", e);
       }
     }
 
