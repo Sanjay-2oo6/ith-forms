@@ -50,6 +50,12 @@ const TEXT_TYPES = ["short_text","email","phone","url","number","name","address"
 // Types that are file uploads
 const FILE_TYPES = ["file","document","image","payment"];
 
+// Razorpay native mode threshold: amounts >= 100 paise (1 INR) use the native Razorpay
+// checkout integration. This is Razorpay's API minimum for UPI and certain payment methods.
+// Amounts < 100 or missing amount fall back to legacy screenshot upload mode for backward
+// compatibility with forms created before native integration.
+const RAZORPAY_NATIVE_MIN_AMOUNT = 100;
+
 // ── URL pre-fill (?name=John&email=john@example.com) ─────────────────────────
 // Query params may pre-populate COMPATIBLE questions only: plain text-like
 // types plus long_text. A param matches a question by its type (e.g. ?email=…
@@ -378,7 +384,7 @@ function PublicForm() {
       return rows.some(r => !grid[r]);
     }
     if (q.type === "payment") {
-      const isNativeMode = (q.config?.razorpayAmount ?? 0) >= 100;
+      const isNativeMode = (q.config?.razorpayAmount ?? 0) >= RAZORPAY_NATIVE_MIN_AMOUNT;
       if (isNativeMode) {
         // Native Razorpay: must have payment_id (string starting with pay_)
         return !val || (typeof val === "string" && !val.trim());
@@ -539,10 +545,6 @@ function PublicForm() {
     // Include native Razorpay payment questions (payment_id is a string)
     // Exclude legacy payment questions (screenshots handled as files)
     // Also exclude hidden questions (conditional logic)
-    // 
-    // Native mode detection: razorpayAmount >= 100 paise (1 INR) is Razorpay's API
-    // minimum for certain payment methods. Questions with amount >= 100 use native
-    // checkout; amounts < 100 or missing use legacy screenshot upload mode.
     const answerPayload = questions
       .filter(q => {
         // Exclude display-only types
@@ -552,7 +554,7 @@ function PublicForm() {
         // Include payment questions in native Razorpay mode (payment_id is a string)
         // Exclude payment questions in legacy mode (screenshots handled as files)
         if (q.type === "payment") {
-          const isNativeMode = (q.config?.razorpayAmount ?? 0) >= 100;
+          const isNativeMode = (q.config?.razorpayAmount ?? 0) >= RAZORPAY_NATIVE_MIN_AMOUNT;
           return isNativeMode;
         }
         return true;
@@ -692,16 +694,12 @@ function PublicForm() {
     // upload simply re-runs against the same submission, creating no duplicate).
     // 
     // F10: Native Razorpay payment questions store payment_id as a string answer, NOT files.
-    // Native mode detection: razorpayAmount >= 100 paise (1 INR) triggers native Razorpay
-    // checkout integration. This threshold matches Razorpay's API minimum for certain payment
-    // methods. Amounts < 100 or missing amount use legacy screenshot upload mode for backward
-    // compatibility with forms created before native integration.
     const missingRequiredFile = questions.some(q => {
       if (!q.required) return false;
       
       // Native Razorpay mode: payment_id stored as string answer, not a file
       if (q.type === "payment") {
-        const isNativeMode = (q.config?.razorpayAmount ?? 0) >= 100;
+        const isNativeMode = (q.config?.razorpayAmount ?? 0) >= RAZORPAY_NATIVE_MIN_AMOUNT;
         if (isNativeMode) {
           // Payment handled via answer payload, not file upload
           return false;
@@ -743,13 +741,6 @@ function PublicForm() {
           ? `An error occurred: ${unexpectedError.message}` 
           : "An unexpected error occurred. Please try again." 
       });
-    } finally {
-      // F10: Safety net — always reset guard if form didn't transition to 'done' state
-      // (done state means success, guard should stay locked to prevent double-submit)
-      // The explicit resets in error paths are kept for better UX (immediate feedback)
-      if (formState !== "done") {
-        submitGuard.current = false;
-      }
     }
   }
 
@@ -1504,7 +1495,7 @@ function QuestionField({ question: q, value, error, onChange, formContext }: {
 
       {/* Payment question — Razorpay native checkout OR legacy screenshot upload */}
       {q.type === "payment" && (() => {
-        const isNativeMode = (q.config?.razorpayAmount ?? 0) >= 100;
+        const isNativeMode = (q.config?.razorpayAmount ?? 0) >= RAZORPAY_NATIVE_MIN_AMOUNT;
         const paymentId = value as string | undefined;
         const isPaid = !!paymentId && typeof paymentId === "string" && paymentId.startsWith("pay_");
 

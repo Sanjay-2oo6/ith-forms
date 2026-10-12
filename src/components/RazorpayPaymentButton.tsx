@@ -14,32 +14,29 @@ declare global {
  * The script may load (window.Razorpay exists) but the constructor may not be
  * fully ready on heavily loaded pages or slow devices, causing "browser not supported" errors.
  * 
- * This polls with exponential backoff, attempting to construct a test instance to verify
- * the SDK is truly ready before opening the payment modal.
+ * This polls with exponential backoff, verifying the SDK constructor and prototype
+ * are fully defined before opening the payment modal.
+ * 
+ * NOTE: Razorpay SDK includes device fingerprinting for fraud detection that may attempt
+ * to load resources from localhost URLs. ERR_CONNECTION_REFUSED errors in the console
+ * are expected Razorpay behavior and do not affect payment functionality.
  */
-async function waitForRazorpayReady(maxAttempts = 10, initialDelayMs = 50): Promise<boolean> {
+async function waitForRazorpayReady(maxAttempts = 5, initialDelayMs = 100): Promise<boolean> {
   for (let i = 0; i < maxAttempts; i++) {
-    if (window.Razorpay && typeof window.Razorpay === 'function') {
-      // Additional readiness check: try to construct a dummy instance
-      try {
-        // This will throw if Razorpay isn't fully ready
-        new window.Razorpay({
-          key: 'test_key',
-          amount: 100,
-          currency: 'INR',
-          name: 'Test',
-          description: 'Readiness check',
-          order_id: 'test_order',
-          handler: () => {},
-        });
-        // If we got here, SDK is ready
-        return true;
-      } catch (e) {
-        // Not ready yet, continue waiting
-        console.log(`[payment] Razorpay SDK not ready, attempt ${i + 1}/${maxAttempts}`);
-      }
+    // Check that Razorpay exists, is a function, and has a fully defined prototype
+    // This verifies the SDK is loaded and initialized without creating test instances
+    if (
+      window.Razorpay &&
+      typeof window.Razorpay === 'function' &&
+      typeof window.Razorpay.prototype === 'object' &&
+      'open' in window.Razorpay.prototype
+    ) {
+      console.log(`[payment] Razorpay SDK ready after ${i} attempts`);
+      return true;
     }
-    // Exponential backoff: 50ms, 100ms, 200ms, 400ms...
+    
+    // Not ready yet - exponential backoff: 100ms, 200ms, 400ms, 800ms, 1600ms (max ~3.1s total)
+    console.log(`[payment] Razorpay SDK not ready, attempt ${i + 1}/${maxAttempts}`);
     const delay = initialDelayMs * Math.pow(2, i);
     await new Promise(resolve => setTimeout(resolve, delay));
   }
