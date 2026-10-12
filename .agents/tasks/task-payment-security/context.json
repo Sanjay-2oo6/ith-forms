@@ -1,0 +1,27 @@
+{
+  "project_type": "React 19 + TanStack Start SSR form builder with Supabase backend",
+  "language": "TypeScript",
+  "build_system": "Vite + TanStack Start. No custom build quirks. Uses npm for package management.",
+  "test_framework": "Vitest for unit tests, separate vitest.integration.config.ts for RPC tests against live Supabase",
+  "build_command": "npm run build",
+  "test_command": "npm test (unit), npm run test:rpc (integration against Supabase)",
+  "verification_instructions": "Run npm run test:rpc after each migration to verify RPC behavior. Manual testing via npm run dev requires Razorpay test credentials (RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET) in environment. Test payment flow end-to-end: create form with payment question, complete Razorpay test payment, submit form, verify in database that payment_transactions.verified=true and submissions row created.",
+  "snapshot_or_generated_files": "None. Migrations are hand-written SQL files run manually in Supabase SQL Editor.",
+  "environment_constraints": "Migrations must be run MANUALLY in Supabase dashboard SQL Editor in numeric order. Cannot be automated. Dev server runs on port 3000 (strict). Razorpay credentials must be set in .env (VITE_RAZORPAY_KEY_ID for frontend, RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET for backend). Google OAuth required for all form submissions per migration 059.",
+  "contribution_requirements": "Per AGENTS.md: (1) Migrations run manually in SQL editor, numbered sequentially (next is 065). (2) Comments explain WHY, not what. (3) Toasts (sonner) for user errors, console.error for diagnostics. (4) Query keys follow pattern ['entity-name', id, ...filters]. (5) Every mutation writes audit_logs row with allowed action from CHECK constraint. (6) Never give anon direct table writes - only through SECURITY DEFINER RPCs. (7) CSP keeps 'unsafe-inline' for scripts without nonce (adding nonce breaks app). (8) Reference IDs are per-form. (9) Choice answers store values not labels. (10) Next migration number: 065.",
+  "key_patterns": "Security: All public writes via submit_response RPC (SECURITY DEFINER). Admin pages use authenticated session + is_admin() RLS policy. Payment flow: Razorpay checkout → record_payment_transaction (HMAC signature verification) → submit_response (server-side payment verification). File uploads: Private bucket + register_submission_file RPC. Idempotency: uuidv4() keys prevent duplicates. Rate limiting: 10 submissions/hour/email. Audit logging: Every mutation writes to audit_logs with constrained action values.",
+  "relevant_files": [
+    "supabase/migrations/059_fix_submit_response_function.sql",
+    "supabase/migrations/063_razorpay_payment_integration.sql",
+    "supabase/migrations/064_secure_payment_verification.sql",
+    "src/routes/forms/$slug.tsx",
+    "src/components/RazorpayPaymentButton.tsx",
+    "src/server.ts",
+    "tests/integration/rpc.test.ts",
+    "src/lib/validation.ts",
+    "PROJECT_DOCS.txt",
+    ".agents/tasks/payment-security-plan.md",
+    ".agents/tasks/security-impl-plan.md"
+  ],
+  "directory_structure": "supabase/migrations/ (SQL files run manually in order), src/routes/ (TanStack Router file-based routes), src/routes/_admin/ (admin pages with auth guard), src/routes/forms/$slug.tsx (THE public form renderer - critical file), src/components/ (presentational components), src/lib/ (validation, utilities, theme), tests/integration/ (RPC integration tests vs live Supabase), docs/ (technical documentation)"
+}

@@ -60,7 +60,9 @@ docs/                           → Technical documentation
 006-014: Core (dashboard stats, responses, admin user management)
 015-018: Config + Fixes ⚠️ DUPLICATE NUMBERS - see note below
 019-059: Modern features (date filters, builder save, audit actions, rate limiting, etc.)
-060+: Future migrations (conditional logic, etc.)
+060-064: Conditional logic, payment integration, secure payment verification
+065-067: Payment security (server-side verification, dev-tools bypass prevention)
+068+: Future migrations
 
 ### IMPORTANT: Migrations 015-018 Have Duplicate Numbers
 Two parallel development tracks created duplicate numbers:
@@ -68,7 +70,14 @@ Two parallel development tracks created duplicate numbers:
 - Track B (config): 015_file_upload_configuration, 016_linear_scale_configuration, 017_question_config, 018_reset_reference_sequences
 
 All migrations are idempotent - safe to run all 8 files.
-Next new migration: 060_add_conditional_logic.sql
+
+### Payment Security Migrations (065-067)
+Critical security migrations for payment-required forms:
+- 065_nullable_submission_id_for_payments.sql: Enables payment-first flow
+- 066_update_payment_rpcs_for_nullable_submission.sql: Dual-mode payment recording
+- 067_fix_submit_response_payment_verification.sql: Server-side verification enforcement
+
+Next new migration: 068
 
 ## CURRENT PROJECT STATUS
 =========================
@@ -97,6 +106,16 @@ Next new migration: 060_add_conditional_logic.sql
 7. Rate limiting prevents spam (5 submissions per minute per email)
 8. Idempotency keys prevent duplicate submissions
 9. File uploads validated (size, type, path sanitization)
+10. Payment verification server-side (HMAC signature + atomic linking)
+
+### Payment Security (Migrations 065-067)
+Payment-required forms enforce server-side verification to prevent dev-tools bypass:
+- Payment records created BEFORE submission (nullable submission_id FK)
+- record_payment_transaction verifies HMAC-SHA256 signature from Razorpay
+- submit_response links pre-recorded payments atomically (1-hour staleness window)
+- Server checks all payment questions with amount >= 100 paise
+- Missing verified payments = submission rejected + audit log
+- Prevents: Dev-tools manipulation, signature tampering, stale payment reuse
 
 ### What Attackers CAN'T Do (Even with Supabase URL + Anon Key)
 - ❌ Read other users' submissions
@@ -107,6 +126,9 @@ Next new migration: 060_add_conditional_logic.sql
 - ❌ Submit invalid data (Zod + DB constraints)
 - ❌ Access SERVICE_ROLE_KEY
 - ❌ Bypass RLS policies
+- ❌ Bypass payment requirements via dev tools (server-side verification)
+- ❌ Reuse old payments for new submissions (1-hour staleness window)
+- ❌ Tamper with payment signatures (HMAC-SHA256 verification)
 
 ## AUTHENTICATION FLOW
 ======================
