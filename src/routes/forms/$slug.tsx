@@ -576,9 +576,6 @@ function PublicForm() {
       return;
     }
 
-    // Pre-generate submission ID for payment-first flow
-    const submissionId = uuidv4();
-
     // SECURITY: Record payment transactions FIRST for native Razorpay questions
     // Payment data is stored in window.__pendingPayments during checkout
     // This ensures payment verification happens before submission can succeed
@@ -586,11 +583,12 @@ function PublicForm() {
     if (Object.keys(pendingPayments).length > 0) {
       console.log("[payment] Recording payment transactions before submission:", pendingPayments);
       
-      // Record each payment transaction in the database FIRST
+      // Record each payment transaction in the database FIRST (submission_id=NULL, linked later)
       for (const [questionId, paymentData] of Object.entries(pendingPayments) as [string, any][]) {
         try {
           const { data: txResult, error: txError } = await supabase.rpc("record_payment_transaction", {
-            p_submission_id: submissionId, // Pre-generated submission ID
+            p_form_id: form.id,
+            p_submission_id: null, // NULL until submit_response creates the submission
             p_question_id: questionId,
             p_razorpay_order_id: paymentData.order_id,
             p_razorpay_payment_id: paymentData.payment_id,
@@ -607,7 +605,7 @@ function PublicForm() {
             setErrors({ __form: "Payment verification failed. Please try again or contact support." });
             return;
           } else {
-            console.log("[payment] Transaction recorded successfully:", txResult);
+            console.log("[payment] Pre-recorded payment for question:", questionId, "transaction:", txResult);
           }
         } catch (err) {
           console.error("[payment] Exception recording transaction:", err);
@@ -619,7 +617,7 @@ function PublicForm() {
       }
     }
 
-    // Now submit the form - the server will verify payment transactions exist
+    // Now submit the form - the server will verify payment transactions exist and link them
     // All public writes go through the SECURITY DEFINER RPC (migration 064):
     // atomic submission + answers + payment verification, race-safe limits, idempotent by key.
     const { data: rpcData, error: rpcErr } = await supabase.rpc("submit_response", {
@@ -628,7 +626,6 @@ function PublicForm() {
       p_email: respondentEmail,
       p_idempotency_key: idempotencyKey.current,
       p_answers: answerPayload,
-      p_submission_id: submissionId, // Pass pre-generated ID for payment verification
     });
 
     const result = rpcData as { submission_id: string; reference_id: string; reference_token: string; payment_required?: boolean } | null;
@@ -639,7 +636,7 @@ function PublicForm() {
       const msg = rpcErr?.message ?? "";
       const friendly =
         msg.includes("Payment verification required") || result?.payment_required ? 
-          "Payment verification failed. Please ensure all required payments are completed." :
+          "Payment verification failed. Please ensure all required payments are completed before submitting the form." :
         msg.includes("form_not_open")    ? "This form is not open yet." :
         msg.includes("form_closed")      ? "This form is no longer accepting responses." :
         msg.includes("limit_reached")    ? "This form has reached its response limit. Please contact the organiser." :
