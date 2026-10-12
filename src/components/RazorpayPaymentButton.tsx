@@ -92,31 +92,30 @@ export function RazorpayPaymentButton({
     setIsCreatingOrder(true);
 
     try {
-      // Create order via backend API (secure: secret key never exposed to frontend)
+      // Create order via Supabase RPC (secure: secret key never exposed to frontend)
       console.log("[payment] Creating order with amount:", amount);
       
-      const orderResponse = await fetch("/api/razorpay/create-order", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          amount: amount, // Amount in paise
-          currency: currency,
-          formId: formId,
-          questionId: questionId,
-          userEmail: userEmail,
-        }),
-      });
+      const { data: orderData, error: orderError } = await supabase.rpc(
+        "create_razorpay_order",
+        {
+          p_form_id: formId,
+          p_question_id: questionId,
+          p_amount: amount,
+          p_currency: currency,
+        }
+      );
 
-      if (!orderResponse.ok) {
-        const errorData = await orderResponse.json();
-        console.error("[payment] Order creation failed:", errorData);
-        throw new Error(`Order creation failed: ${errorData?.message || "Unknown error"}`);
+      if (orderError) {
+        console.error("[payment] Order creation failed:", orderError);
+        throw new Error(`Order creation failed: ${orderError.message || "Unknown error"}`);
       }
 
-      const orderData = await orderResponse.json();
-      const orderId = orderData.orderId;
+      if (!orderData?.ok) {
+        console.error("[payment] Order creation failed:", orderData?.error);
+        throw new Error(orderData?.error || "Order creation failed");
+      }
+
+      const orderId = orderData.order_id;
       console.log("[payment] Order created:", orderId);
       console.log("[payment] Order data:", orderData);
 
@@ -135,8 +134,6 @@ export function RazorpayPaymentButton({
           // Payment successful - verification will happen during form submission
           console.log("[payment] Payment successful:", response.razorpay_payment_id);
           
-          // Store payment details for verification during submission
-          // The submit_response RPC will verify the signature and record the transaction
           toast.success("Payment completed successfully!");
           
           setIsProcessing(false);
@@ -154,10 +151,8 @@ export function RazorpayPaymentButton({
             setIsProcessing(false);
             toast.info("Payment cancelled");
           },
-          confirm_close: false, // Don't show "Continue in another browser" popup
-        },
-        retry: {
-          enabled: false, // Disable retry to avoid confusion
+          confirm_close: false,
+          backdropclose: false,
         },
       });
 
