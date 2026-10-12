@@ -165,7 +165,7 @@ export async function buildExportRows(
     try {
       const { data: txData, error } = await supabaseClient
         .from("payment_transactions")
-        .select("submission_id, question_id, amount, currency, status, razorpay_payment_id, verified")
+        .select("submission_id, question_id, amount, currency, status, razorpay_payment_id, razorpay_order_id, verified")
         .in("submission_id", submissionIds)
         .in("question_id", questionIds);
       
@@ -194,12 +194,12 @@ export async function buildExportRows(
         const answer = s.answers?.[q.id];
         const isNativePayment = q.type === "payment" && ((q.config?.razorpayAmount ?? 0) >= 100);
         
-        // For native Razorpay payment questions, add 4 columns with transaction details
+        // For native Razorpay payment questions, add 5 columns with transaction details
         if (isNativePayment) {
           const tx = paymentTransactions[`${s.id}_${q.id}`];
           
           if (tx) {
-            // Main answer column shows payment ID
+            // Main answer column shows payment status with ID
             row[q.label] = `Payment completed (ID: ${tx.razorpay_payment_id})`;
             
             // Additional payment detail columns
@@ -208,6 +208,7 @@ export async function buildExportRows(
               ? `₹${(tx.amount / 100).toFixed(2)}`
               : `${tx.currency} ${(tx.amount / 100).toFixed(2)}`;
             row[`${q.label} - Payment ID`] = tx.razorpay_payment_id ?? "";
+            row[`${q.label} - Order ID`] = tx.razorpay_order_id ?? "";
             row[`${q.label} - Verified`] = tx.verified ? "Yes" : "No";
           } else {
             // No payment transaction found
@@ -215,6 +216,7 @@ export async function buildExportRows(
             row[`${q.label} - Status`] = "NOT PAID";
             row[`${q.label} - Amount`] = "";
             row[`${q.label} - Payment ID`] = "";
+            row[`${q.label} - Order ID`] = "";
             row[`${q.label} - Verified`] = "No";
           }
           

@@ -611,20 +611,43 @@ function PublicForm() {
       return;
     }
 
-    // TODO: Record payment transactions for native Razorpay questions
-    // Currently disabled - payment verification will be added as admin feature
-    // Payment data is stored in window.__pendingPayments and can be verified manually
+    // Record payment transactions for native Razorpay questions
+    // Payment data is stored in window.__pendingPayments during checkout
     const pendingPayments = typeof window !== "undefined" ? (window as any).__pendingPayments || {} : {};
     if (Object.keys(pendingPayments).length > 0) {
-      console.log("[payment] Payment completed:", pendingPayments);
-      // Store in localStorage for admin verification if needed
-      try {
-        localStorage.setItem(
-          `payment_${result.submission_id}`,
-          JSON.stringify(pendingPayments)
-        );
-      } catch (e) {
-        console.warn("[payment] Could not store payment data:", e);
+      console.log("[payment] Recording payment transactions:", pendingPayments);
+      
+      // Record each payment transaction in the database
+      for (const [questionId, paymentData] of Object.entries(pendingPayments) as [string, any][]) {
+        try {
+          const { data: txResult, error: txError } = await supabase.rpc("record_payment_transaction", {
+            p_submission_id: result.submission_id,
+            p_question_id: questionId,
+            p_razorpay_order_id: paymentData.order_id,
+            p_razorpay_payment_id: paymentData.payment_id,
+            p_razorpay_signature: paymentData.signature,
+            p_amount: paymentData.amount,
+            p_currency: paymentData.currency || "INR",
+            p_status: "captured",
+          });
+          
+          if (txError) {
+            console.error("[payment] Failed to record transaction:", txError);
+            // Store in localStorage as fallback for admin verification
+            try {
+              localStorage.setItem(
+                `payment_${result.submission_id}_${questionId}`,
+                JSON.stringify(paymentData)
+              );
+            } catch (e) {
+              console.warn("[payment] Could not store payment fallback:", e);
+            }
+          } else {
+            console.log("[payment] Transaction recorded successfully:", txResult);
+          }
+        } catch (err) {
+          console.error("[payment] Exception recording transaction:", err);
+        }
       }
     }
 

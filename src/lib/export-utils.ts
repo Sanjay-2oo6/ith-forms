@@ -47,6 +47,8 @@ export function displayAnswer(
   if (questionType === "payment") {
     // Native Razorpay mode: rawValue is payment_id string (starts with pay_)
     // Legacy mode: rawValue is file path or empty
+    // Note: Full payment details (amount, order_id, status) are added as separate
+    // columns in buildExportRows() in responses.ts for native payments
     if (rawValue && rawValue.startsWith("pay_")) {
       return `Payment completed (ID: ${rawValue})`;
     }
