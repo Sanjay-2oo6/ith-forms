@@ -1,0 +1,33 @@
+{
+  "id": "FEAT-003",
+  "type": "fix",
+  "description": "Fix submit_response payment verification to handle pre-recorded payments where submission_id was NULL during recording. Update payment amount check to handle NULL razorpayAmount (backward compatibility). Link pre-recorded verified payments to the submission during submit_response, then verify all required payment questions have verified payments. This is the core security enforcement. Depends on FEAT-001 and FEAT-002.",
+  "status": "completed",
+  "steps": [
+    "Create supabase/migrations/067_fix_submit_response_payment_verification.sql",
+    "Keep entire existing submit_response logic from migration 064 through the submission creation (lines 1-108)",
+    "Fix payment question detection (line ~111): Change to 'AND COALESCE((config->>'razorpayAmount')::integer, 0) >= 100' to match server.ts minimum and handle NULL amounts",
+    "BEFORE checking for verified payments, add UPDATE statement to link pre-recorded payments: UPDATE payment_transactions SET submission_id = v_sub_id, updated_at = now() WHERE submission_id IS NULL AND form_id = p_form_id AND question_id = v_payment_question.id AND verified = true AND created_at > now() - interval '1 hour'",
+    "THEN check payment verification: SELECT COUNT(*) INTO v_payment_count FROM payment_transactions WHERE submission_id = v_sub_id AND question_id = v_payment_question.id AND verified = true AND status IN ('captured', 'authorized')",
+    "Keep all error handling: IF v_payment_count = 0 collect missing question labels, log to audit_logs with action='submit_response_payment_bypass_blocked', DELETE submission, return payment_required error",
+    "Keep both function overloads (6-param and 5-param) for backward compatibility",
+    "Update function COMMENT to document the pre-recorded payment linking behavior"
+  ],
+  "acceptance_criteria": [
+    "Pre-recorded payments with submission_id=NULL are automatically linked to submission during submit_response",
+    "Payment verification succeeds when verified=true payment exists for required payment question",
+    "Payment verification fails when no verified payment exists - submission deleted, error returned with payment_required=true",
+    "Questions without razorpayAmount or amount < 100 paise are skipped (no payment required)",
+    "All payment bypass attempts logged to audit_logs with complete metadata",
+    "Backward compatibility maintained for forms without payment questions"
+  ],
+  "verification": [
+    "npm run test:rpc - all existing tests pass",
+    "Add integration test: 'submit_response links pre-recorded payment and succeeds' - record payment with submission_id=NULL, then call submit_response with same IDs, verify success",
+    "Add integration test: 'submit_response blocks submission without payment' - create form with payment question, call submit_response without recording payment, verify error with payment_required=true",
+    "Check audit_logs after bypass test: SELECT * FROM audit_logs WHERE action='submit_response_payment_bypass_blocked' ORDER BY created_at DESC LIMIT 1 - should contain metadata about missing payments",
+    "Check payment linking: After successful submit with pre-recorded payment, SELECT submission_id FROM payment_transactions WHERE razorpay_order_id='<test-order-id>' - should show the submission_id (not NULL)"
+  ],
+  "blocked_reason": null,
+  "findings": "Migration 067 created successfully. Edge cases discovered and handled:\n\n1. Amount threshold mismatch: Migration 064 used >= 1 paise but server.ts enforces >= 100 paise minimum. Fixed to >= 100 paise for consistency.\n\n2. NULL amount handling: Payment questions may have NULL or undefined razorpayAmount (legacy or incomplete config). Used COALESCE((config->>'razorpayAmount')::integer, 0) >= 100 to safely skip these.\n\n3. Pre-recorded payment linking: record_payment_transaction is called BEFORE submit_response, leaving submission_id=NULL. Added UPDATE statement to link verified payments within 1-hour window before verification.\n\n4. Stale payment reuse prevention: 1-hour window (created_at > now() - interval '1 hour') prevents reuse of old verified payments across different submission attempts.\n\n5. Race condition safety: UPDATE and verification SELECT both happen within the submit_response transaction, ensuring atomicity with submission creation.\n\n6. Multiple payments per question: UPDATE may link multiple payments (edge case), but COUNT(*) verification correctly requires at least one.\n\n7. Backward compatibility: COALESCE and >= 100 threshold ensure forms without payment questions or with low amounts continue to work without requiring payment.\n\nAll existing security checks maintained: email match, rate limiting, audit logging, atomic rollback on failure."
+}
