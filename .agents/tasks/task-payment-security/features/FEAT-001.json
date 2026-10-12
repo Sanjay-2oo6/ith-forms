@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-001",
+  "type": "fix",
+  "description": "Modify payment_transactions.submission_id FK constraint to be nullable, allowing payment transactions to be recorded before submission row exists. This is the foundational schema change enabling payment-first security flow. Current bug: record_payment_transaction fails with FK violation when called with pre-generated submission_id that doesn't exist yet.",
+  "status": "completed",
+  "steps": [
+    "Create supabase/migrations/065_nullable_submission_id_for_payments.sql with ALTER TABLE statement to drop NOT NULL constraint on submission_id column",
+    "Add CHECK constraint: verified_payments_have_submission that ensures verified=false OR submission_id IS NOT NULL (verified payments must be linked to a submission)",
+    "Add SQL comment explaining the nullable design: 'submission_id is nullable to support payment-first flow where payment is recorded before submission row exists. The check constraint ensures verified payments are always linked to a valid submission.'",
+    "Keep all existing indexes unchanged (idx_payment_transactions_submission still works with NULLs)",
+    "Keep FK cascade behavior: ON DELETE CASCADE still applies when submission_id is set"
+  ],
+  "acceptance_criteria": [
+    "Can INSERT payment_transactions row with submission_id = NULL",
+    "Can UPDATE submission_id from NULL to valid UUID after submission created",
+    "Cannot set verified=true when submission_id is NULL (constraint violation expected)",
+    "FK cascade still deletes payment when linked submission is deleted",
+    "Migration 065 runs without errors in Supabase SQL Editor"
+  ],
+  "verification": [
+    "Run migration 065 in Supabase SQL Editor - should complete without errors",
+    "Execute test SQL from security-impl-plan.md section 'FEAT-001 Verification' to verify nullable behavior and constraint enforcement",
+    "Check schema: SELECT column_name, is_nullable, data_type FROM information_schema.columns WHERE table_name='payment_transactions' AND column_name='submission_id' - should show is_nullable='YES'"
+  ],
+  "blocked_reason": null,
+  "findings": "Migration 065 created successfully. SQL syntax verified. The migration:\n1. Drops NOT NULL constraint on payment_transactions.submission_id\n2. Adds CHECK constraint verified_payments_have_submission ensuring verified=false OR submission_id IS NOT NULL\n3. Preserves all existing indexes and FK cascade behavior\n4. Includes comprehensive comments explaining the payment-first flow rationale\n\nReady for manual execution in Supabase SQL Editor. Next steps should verify the constraint works as expected before implementing record_payment_transaction changes."
+}
