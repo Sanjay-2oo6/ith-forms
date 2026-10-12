@@ -1,0 +1,27 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "severity": "high",
+      "confidence": "confirmed",
+      "title": "Finally block guard reset on success path",
+      "description": "The finally clause checks `formState !== \"done\"` to decide whether to reset the guard, but `formState` is a React state variable that updates asynchronously. The comparison reads the stale value captured when the function started, not the value set by `setFormState(\"done\")`. After a successful submission, the finally block sees `formState` still as \"submitting\" or \"ready\" and resets `submitGuard.current = false`, allowing double-submit from the thank-you page.",
+      "action": "Remove the finally block's conditional reset and keep only the explicit `submitGuard.current = false` calls on error paths (already present in 5 locations: auth failure, validation failure, RPC error, missing file, and catch block)."
+    },
+    {
+      "severity": "medium",
+      "confidence": "possible",
+      "title": "Dummy Razorpay instance may leave artifacts",
+      "description": "The readiness check constructs a test Razorpay instance on every polling attempt to verify the SDK is ready. Razorpay's constructor may attach event listeners, DOM nodes, or internal state that isn't cleaned up, especially if called 10 times (max attempts). If the instances leak, they might interfere with the real payment modal.",
+      "action": "Check whether Razorpay provides a `destroy()` or `close()` method; if not, consider a simpler check (verify `window.Razorpay.prototype` exists and is an object) or reduce max attempts to 3."
+    },
+    {
+      "severity": "low",
+      "confidence": "confirmed",
+      "title": "100 paise threshold comment repeated",
+      "description": "The \"Native mode detection: razorpayAmount >= 100 paise\" comment block appears verbatim in 3 places: the `answerPayload` filter, the `missingRequiredFile` check, and the comment above it. The repetition makes it harder to maintain if the threshold or rationale changes.",
+      "action": "Extract the threshold to a named constant `const RAZORPAY_NATIVE_MIN_AMOUNT = 100;` at the top of the file and replace the inline checks with `(q.config?.razorpayAmount ?? 0) >= RAZORPAY_NATIVE_MIN_AMOUNT`, keeping one comment at the constant definition."
+    }
+  ],
+  "reviewDoc": "d:\\ITHub\\ith-forms\\.agents\\tasks\\razorpay-fix-review.md"
+}

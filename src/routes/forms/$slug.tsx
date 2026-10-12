@@ -576,24 +576,70 @@ function PublicForm() {
       return;
     }
 
-    // All public writes go through the SECURITY DEFINER RPC (migration 005):
-    // atomic submission + answers, race-safe limits, idempotent by key.
-    // Anon direct table access was removed — this is the only write path.
+    // Pre-generate submission ID for payment-first flow
+    const submissionId = uuidv4();
+
+    // SECURITY: Record payment transactions FIRST for native Razorpay questions
+    // Payment data is stored in window.__pendingPayments during checkout
+    // This ensures payment verification happens before submission can succeed
+    const pendingPayments = typeof window !== "undefined" ? (window as any).__pendingPayments || {} : {};
+    if (Object.keys(pendingPayments).length > 0) {
+      console.log("[payment] Recording payment transactions before submission:", pendingPayments);
+      
+      // Record each payment transaction in the database FIRST
+      for (const [questionId, paymentData] of Object.entries(pendingPayments) as [string, any][]) {
+        try {
+          const { data: txResult, error: txError } = await supabase.rpc("record_payment_transaction", {
+            p_submission_id: submissionId, // Pre-generated submission ID
+            p_question_id: questionId,
+            p_razorpay_order_id: paymentData.order_id,
+            p_razorpay_payment_id: paymentData.payment_id,
+            p_razorpay_signature: paymentData.signature,
+            p_amount: paymentData.amount,
+            p_currency: paymentData.currency || "INR",
+            p_status: "captured",
+          });
+          
+          if (txError) {
+            console.error("[payment] Failed to record transaction:", txError);
+            setFormState("ready");
+            submitGuard.current = false;
+            setErrors({ __form: "Payment verification failed. Please try again or contact support." });
+            return;
+          } else {
+            console.log("[payment] Transaction recorded successfully:", txResult);
+          }
+        } catch (err) {
+          console.error("[payment] Exception recording transaction:", err);
+          setFormState("ready");
+          submitGuard.current = false;
+          setErrors({ __form: "Payment verification failed. Please try again or contact support." });
+          return;
+        }
+      }
+    }
+
+    // Now submit the form - the server will verify payment transactions exist
+    // All public writes go through the SECURITY DEFINER RPC (migration 064):
+    // atomic submission + answers + payment verification, race-safe limits, idempotent by key.
     const { data: rpcData, error: rpcErr } = await supabase.rpc("submit_response", {
       p_form_id: form.id,
       p_name: respondentName,
       p_email: respondentEmail,
       p_idempotency_key: idempotencyKey.current,
       p_answers: answerPayload,
+      p_submission_id: submissionId, // Pass pre-generated ID for payment verification
     });
 
-    const result = rpcData as { submission_id: string; reference_id: string; reference_token: string } | null;
+    const result = rpcData as { submission_id: string; reference_id: string; reference_token: string; payment_required?: boolean } | null;
 
     if (rpcErr || !result?.submission_id) {
       // Surface the real cause in the console so failures are diagnosable.
       console.error("[submit] RPC error:", rpcErr, "result:", result);
       const msg = rpcErr?.message ?? "";
       const friendly =
+        msg.includes("Payment verification required") || result?.payment_required ? 
+          "Payment verification failed. Please ensure all required payments are completed." :
         msg.includes("form_not_open")    ? "This form is not open yet." :
         msg.includes("form_closed")      ? "This form is no longer accepting responses." :
         msg.includes("limit_reached")    ? "This form has reached its response limit. Please contact the organiser." :
@@ -609,46 +655,6 @@ function PublicForm() {
       submitGuard.current = false;
       setErrors({ __form: friendly });
       return;
-    }
-
-    // Record payment transactions for native Razorpay questions
-    // Payment data is stored in window.__pendingPayments during checkout
-    const pendingPayments = typeof window !== "undefined" ? (window as any).__pendingPayments || {} : {};
-    if (Object.keys(pendingPayments).length > 0) {
-      console.log("[payment] Recording payment transactions:", pendingPayments);
-      
-      // Record each payment transaction in the database
-      for (const [questionId, paymentData] of Object.entries(pendingPayments) as [string, any][]) {
-        try {
-          const { data: txResult, error: txError } = await supabase.rpc("record_payment_transaction", {
-            p_submission_id: result.submission_id,
-            p_question_id: questionId,
-            p_razorpay_order_id: paymentData.order_id,
-            p_razorpay_payment_id: paymentData.payment_id,
-            p_razorpay_signature: paymentData.signature,
-            p_amount: paymentData.amount,
-            p_currency: paymentData.currency || "INR",
-            p_status: "captured",
-          });
-          
-          if (txError) {
-            console.error("[payment] Failed to record transaction:", txError);
-            // Store in localStorage as fallback for admin verification
-            try {
-              localStorage.setItem(
-                `payment_${result.submission_id}_${questionId}`,
-                JSON.stringify(paymentData)
-              );
-            } catch (e) {
-              console.warn("[payment] Could not store payment fallback:", e);
-            }
-          } else {
-            console.log("[payment] Transaction recorded successfully:", txResult);
-          }
-        } catch (err) {
-          console.error("[payment] Exception recording transaction:", err);
-        }
-      }
     }
 
     // Clean up pending payments
