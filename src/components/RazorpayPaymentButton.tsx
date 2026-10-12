@@ -92,30 +92,31 @@ export function RazorpayPaymentButton({
     setIsCreatingOrder(true);
 
     try {
-      // Create order via Supabase RPC (secure: secret key never exposed to frontend)
+      // Create order via backend API (secure: secret key never exposed to frontend)
       console.log("[payment] Creating order with amount:", amount);
       
-      const { data: orderData, error: orderError } = await supabase.rpc(
-        "create_razorpay_order",
-        {
-          p_form_id: formId,
-          p_question_id: questionId,
-          p_amount: amount,
-          p_currency: currency,
-        }
-      );
+      const orderResponse = await fetch("/api/razorpay/create-order", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount: amount,
+          currency: currency,
+          formId: formId,
+          questionId: questionId,
+          userEmail: userEmail,
+        }),
+      });
 
-      if (orderError) {
-        console.error("[payment] Order creation failed:", orderError);
-        throw new Error(`Order creation failed: ${orderError.message || "Unknown error"}`);
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json();
+        console.error("[payment] Order creation failed:", errorData);
+        throw new Error(errorData?.message || "Order creation failed");
       }
 
-      if (!orderData?.ok) {
-        console.error("[payment] Order creation failed:", orderData?.error);
-        throw new Error(orderData?.error || "Order creation failed");
-      }
-
-      const orderId = orderData.order_id;
+      const orderData = await orderResponse.json();
+      const orderId = orderData.orderId;
       console.log("[payment] Order created:", orderId);
       console.log("[payment] Order data:", orderData);
 
