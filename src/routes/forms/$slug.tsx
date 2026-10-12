@@ -50,11 +50,11 @@ const TEXT_TYPES = ["short_text","email","phone","url","number","name","address"
 // Types that are file uploads
 const FILE_TYPES = ["file","document","image","payment"];
 
-// Razorpay native mode threshold: amounts >= 100 paise (1 INR) use the native Razorpay
-// checkout integration. This is Razorpay's API minimum for UPI and certain payment methods.
-// Amounts < 100 or missing amount fall back to legacy screenshot upload mode for backward
-// compatibility with forms created before native integration.
-const RAZORPAY_NATIVE_MIN_AMOUNT = 100;
+// Razorpay native mode: ALL payment questions with ANY configured amount use native
+// Razorpay SDK checkout. Razorpay supports amounts as low as 1 paise (₹0.01).
+// Only questions with NO amount configured fall back to legacy screenshot upload mode
+// for backward compatibility with forms created before native integration.
+const RAZORPAY_NATIVE_MIN_AMOUNT = 1; // Changed from 100 to 1 to support any positive amount
 
 // ── URL pre-fill (?name=John&email=john@example.com) ─────────────────────────
 // Query params may pre-populate COMPATIBLE questions only: plain text-like

@@ -118,8 +118,8 @@ export function RazorpayPaymentButton({
       return;
     }
 
-    // Validate amount
-    if (!amount || amount < 100) {
+    // Validate amount (Razorpay supports amounts as low as 1 paise)
+    if (!amount || amount < 1) {
       toast.error("Invalid payment amount configured");
       return;
     }
