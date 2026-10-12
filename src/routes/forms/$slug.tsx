@@ -635,9 +635,10 @@ function PublicForm() {
 
     // Upload files to storage, then register metadata through the validated RPC.
     // Issue #12: Add error handling with user-visible messages
+    // F10: Exclude payment questions - native mode stores payment_id as string, not file
     const failedUploads: string[] = [];
     const successByQuestion: Record<string, number> = {};
-    for (const q of questions.filter(q => FILE_TYPES.includes(q.type))) {
+    for (const q of questions.filter(q => FILE_TYPES.includes(q.type) && q.type !== "payment")) {
       const files = (answers[q.id] as File[]) ?? [];
       for (const file of files) {
         // Sanitize filename: alphanumeric, dash, underscore, dot only (prevent path traversal)
