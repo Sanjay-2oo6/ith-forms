@@ -26,7 +26,10 @@ export type QuestionConfig = {
   minLength?: number; maxLength?: number;        // text
   minSelections?: number; maxSelections?: number;// checkbox
   rows?: string[]; cols?: string[];              // grid
-  paymentUrl?: string;                           // payment
+  // Payment question (Razorpay)
+  razorpayAmount?: number;                       // amount in paise
+  razorpayCurrency?: string;                     // INR, USD, etc.
+  razorpayDescription?: string;                  // payment description
   media?: {
     path?: string;
     kind: "image" | "video";

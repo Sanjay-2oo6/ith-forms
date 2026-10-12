@@ -9,72 +9,37 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AdminRouteRouteImport } from './routes/_admin/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ViewResponseReferenceIdRouteImport } from './routes/view-response/$referenceId'
-import { Route as FormsSlugRouteImport } from './routes/forms/$slug'
-import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
-import { Route as AdminLoginRouteImport } from './routes/admin/login'
-import { Route as AdminSystemHealthRouteImport } from './routes/_admin/system-health'
-import { Route as AdminSettingsRouteImport } from './routes/_admin/settings'
-import { Route as AdminProfileRouteImport } from './routes/_admin/profile'
-import { Route as AdminFilesRouteImport } from './routes/_admin/files'
-import { Route as AdminDashboardRouteImport } from './routes/_admin/dashboard'
+import { Route as AdminRouteRouteImport } from './routes/_admin/route'
 import { Route as AdminAuditRouteImport } from './routes/_admin/audit'
+import { Route as AdminDashboardRouteImport } from './routes/_admin/dashboard'
+import { Route as AdminFilesRouteImport } from './routes/_admin/files'
+import { Route as AdminProfileRouteImport } from './routes/_admin/profile'
+import { Route as AdminSettingsRouteImport } from './routes/_admin/settings'
+import { Route as AdminSystemHealthRouteImport } from './routes/_admin/system-health'
+import { Route as AdminLoginRouteImport } from './routes/admin/login'
+import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as FormsSlugRouteImport } from './routes/forms/$slug'
+import { Route as ViewResponseReferenceIdRouteImport } from './routes/view-response/$referenceId'
 import { Route as AdminFormsIndexRouteImport } from './routes/_admin/forms/index'
 import { Route as AdminFormsNewRouteImport } from './routes/_admin/forms/new'
-import { Route as AdminFormsFormIdThemeRouteImport } from './routes/_admin/forms/$formId/theme'
 import { Route as AdminFormsFormIdEditRouteImport } from './routes/_admin/forms/$formId/edit'
+import { Route as AdminFormsFormIdThemeRouteImport } from './routes/_admin/forms/$formId/theme'
 import { Route as AdminFormsFormIdResponsesIndexRouteImport } from './routes/_admin/forms/$formId/responses/index'
 import { Route as AdminFormsFormIdResponsesSubmissionIdRouteImport } from './routes/_admin/forms/$formId/responses/$submissionId'
 
-const AdminRouteRoute = AdminRouteRouteImport.update({
-  id: '/_admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ViewResponseReferenceIdRoute = ViewResponseReferenceIdRouteImport.update({
-  id: '/view-response/$referenceId',
-  path: '/view-response/$referenceId',
+const AdminRouteRoute = AdminRouteRouteImport.update({
+  id: '/_admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FormsSlugRoute = FormsSlugRouteImport.update({
-  id: '/forms/$slug',
-  path: '/forms/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: '/auth/callback',
-  path: '/auth/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminLoginRoute = AdminLoginRouteImport.update({
-  id: '/admin/login',
-  path: '/admin/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminSystemHealthRoute = AdminSystemHealthRouteImport.update({
-  id: '/system-health',
-  path: '/system-health',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminSettingsRoute = AdminSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminProfileRoute = AdminProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminFilesRoute = AdminFilesRouteImport.update({
-  id: '/files',
-  path: '/files',
+const AdminAuditRoute = AdminAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminDashboardRoute = AdminDashboardRouteImport.update({
@@ -82,10 +47,45 @@ const AdminDashboardRoute = AdminDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminAuditRoute = AdminAuditRouteImport.update({
-  id: '/audit',
-  path: '/audit',
+const AdminFilesRoute = AdminFilesRouteImport.update({
+  id: '/files',
+  path: '/files',
   getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminProfileRoute = AdminProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSystemHealthRoute = AdminSystemHealthRouteImport.update({
+  id: '/system-health',
+  path: '/system-health',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/admin/login',
+  path: '/admin/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FormsSlugRoute = FormsSlugRouteImport.update({
+  id: '/forms/$slug',
+  path: '/forms/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ViewResponseReferenceIdRoute = ViewResponseReferenceIdRouteImport.update({
+  id: '/view-response/$referenceId',
+  path: '/view-response/$referenceId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AdminFormsIndexRoute = AdminFormsIndexRouteImport.update({
   id: '/forms/',
@@ -97,14 +97,14 @@ const AdminFormsNewRoute = AdminFormsNewRouteImport.update({
   path: '/forms/new',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminFormsFormIdThemeRoute = AdminFormsFormIdThemeRouteImport.update({
-  id: '/forms/$formId/theme',
-  path: '/forms/$formId/theme',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
 const AdminFormsFormIdEditRoute = AdminFormsFormIdEditRouteImport.update({
   id: '/forms/$formId/edit',
   path: '/forms/$formId/edit',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminFormsFormIdThemeRoute = AdminFormsFormIdThemeRouteImport.update({
+  id: '/forms/$formId/theme',
+  path: '/forms/$formId/theme',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminFormsFormIdResponsesIndexRoute =
@@ -251,13 +251,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_admin': {
-      id: '/_admin'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AdminRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -265,60 +258,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/view-response/$referenceId': {
-      id: '/view-response/$referenceId'
-      path: '/view-response/$referenceId'
-      fullPath: '/view-response/$referenceId'
-      preLoaderRoute: typeof ViewResponseReferenceIdRouteImport
+    '/_admin': {
+      id: '/_admin'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AdminRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/forms/$slug': {
-      id: '/forms/$slug'
-      path: '/forms/$slug'
-      fullPath: '/forms/$slug'
-      preLoaderRoute: typeof FormsSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/callback': {
-      id: '/auth/callback'
-      path: '/auth/callback'
-      fullPath: '/auth/callback'
-      preLoaderRoute: typeof AuthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin/login': {
-      id: '/admin/login'
-      path: '/admin/login'
-      fullPath: '/admin/login'
-      preLoaderRoute: typeof AdminLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_admin/system-health': {
-      id: '/_admin/system-health'
-      path: '/system-health'
-      fullPath: '/system-health'
-      preLoaderRoute: typeof AdminSystemHealthRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/_admin/settings': {
-      id: '/_admin/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AdminSettingsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/_admin/profile': {
-      id: '/_admin/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof AdminProfileRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/_admin/files': {
-      id: '/_admin/files'
-      path: '/files'
-      fullPath: '/files'
-      preLoaderRoute: typeof AdminFilesRouteImport
+    '/_admin/audit': {
+      id: '/_admin/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AdminAuditRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/_admin/dashboard': {
@@ -328,12 +279,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDashboardRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/_admin/audit': {
-      id: '/_admin/audit'
-      path: '/audit'
-      fullPath: '/audit'
-      preLoaderRoute: typeof AdminAuditRouteImport
+    '/_admin/files': {
+      id: '/_admin/files'
+      path: '/files'
+      fullPath: '/files'
+      preLoaderRoute: typeof AdminFilesRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/_admin/profile': {
+      id: '/_admin/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AdminProfileRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/_admin/settings': {
+      id: '/_admin/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/_admin/system-health': {
+      id: '/_admin/system-health'
+      path: '/system-health'
+      fullPath: '/system-health'
+      preLoaderRoute: typeof AdminSystemHealthRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/admin/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forms/$slug': {
+      id: '/forms/$slug'
+      path: '/forms/$slug'
+      fullPath: '/forms/$slug'
+      preLoaderRoute: typeof FormsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/view-response/$referenceId': {
+      id: '/view-response/$referenceId'
+      path: '/view-response/$referenceId'
+      fullPath: '/view-response/$referenceId'
+      preLoaderRoute: typeof ViewResponseReferenceIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_admin/forms/': {
       id: '/_admin/forms/'
@@ -349,18 +349,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminFormsNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/_admin/forms/$formId/theme': {
-      id: '/_admin/forms/$formId/theme'
-      path: '/forms/$formId/theme'
-      fullPath: '/forms/$formId/theme'
-      preLoaderRoute: typeof AdminFormsFormIdThemeRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
     '/_admin/forms/$formId/edit': {
       id: '/_admin/forms/$formId/edit'
       path: '/forms/$formId/edit'
       fullPath: '/forms/$formId/edit'
       preLoaderRoute: typeof AdminFormsFormIdEditRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/_admin/forms/$formId/theme': {
+      id: '/_admin/forms/$formId/theme'
+      path: '/forms/$formId/theme'
+      fullPath: '/forms/$formId/theme'
+      preLoaderRoute: typeof AdminFormsFormIdThemeRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/_admin/forms/$formId/responses/': {

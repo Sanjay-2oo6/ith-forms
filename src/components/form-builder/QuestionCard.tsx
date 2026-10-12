@@ -508,49 +508,54 @@ function ConfigEditor({ type, cfg, setCfg }: {
   }
 
   if (type === "payment") {
-    const isValidUrl = (url: string) => {
-      try {
-        const parsed = new URL(url);
-        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-      } catch {
-        return false;
-      }
-    };
-    
-    const urlValue = cfg.paymentUrl ?? "";
-    const urlError = urlValue && !isValidUrl(urlValue);
+    const amountValue = cfg.razorpayAmount ?? 0;
+    const currencyValue = cfg.razorpayCurrency ?? "INR";
+    const descValue = cfg.razorpayDescription ?? "";
     
     return (
       <div className="space-y-3">
         <div className="space-y-2">
           <label className="text-xs text-muted-foreground">
-            Payment URL <span className="text-destructive">*</span>
+            Amount (in paise) <span className="text-destructive">*</span>
           </label>
           <input
-            type="url"
-            value={urlValue}
-            onChange={e => {
-              // Always allow typing, save all values
-              setCfg({ paymentUrl: e.target.value });
-            }}
-            placeholder="https://example.com/payment"
-            className={`w-full text-xs rounded border px-2 py-1 outline-none focus:ring-1 focus:ring-ring ${
-              urlError ? 'border-destructive bg-destructive/10' : 'border-input bg-card'
-            }`}
+            type="number"
+            min="100"
+            value={amountValue || ""}
+            onChange={e => setCfg({ razorpayAmount: parseInt(e.target.value) || 0 })}
+            placeholder="10000"
+            className="w-full text-xs rounded border border-input bg-card px-2 py-1 outline-none focus:ring-1 focus:ring-ring"
           />
-          {urlError && (
-            <p className="text-[11px] text-destructive flex items-center gap-1">
-              ⚠️ Only http:// and https:// URLs are allowed. The Pay Now button will not appear until you enter a valid URL.
-            </p>
-          )}
-          {!urlValue && (
+          <p className="text-[11px] text-muted-foreground">
+            Enter amount in paise (e.g., 10000 = ₹100.00). Minimum: 100 paise.
+          </p>
+        </div>
+        
+        <div className="space-y-2">
+          <label className="text-xs text-muted-foreground">Currency</label>
+          <select
+            value={currencyValue}
+            onChange={e => setCfg({ razorpayCurrency: e.target.value })}
+            className="w-full text-xs rounded border border-input bg-card px-2 py-1 outline-none focus:ring-1 focus:ring-ring"
+          >
+            <option value="INR">INR (₹)</option>
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+          </select>
+        </div>
+        
+        <div className="space-y-2">
+          <label className="text-xs text-muted-foreground">Description</label>
+          <input
+            type="text"
+            value={descValue}
+            onChange={e => setCfg({ razorpayDescription: e.target.value })}
+            placeholder="Payment for form submission"
+            className="w-full text-xs rounded border border-input bg-card px-2 py-1 outline-none focus:ring-1 focus:ring-ring"
+          />
+          {descValue && (
             <p className="text-[11px] text-muted-foreground">
-              Enter a payment URL. The Pay Now button will only appear when a valid URL is configured.
-            </p>
-          )}
-          {urlValue && !urlError && (
-            <p className="text-[11px] text-muted-foreground">
-              ✓ Users will be redirected here when they click Pay Now
+              ✓ This description will be shown to users during checkout
             </p>
           )}
         </div>

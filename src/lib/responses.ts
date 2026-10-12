@@ -13,6 +13,12 @@ export type ResponseQuestion = {
   position: number;
   section_title: string | null;
   section_position?: number;  // Added to track section order
+  config?: {
+    razorpayAmount?: number;
+    razorpayCurrency?: string;
+    razorpayDescription?: string;
+    [key: string]: any;
+  };
 };
 
 export type ResponseAnswer = {
@@ -139,13 +145,42 @@ export async function fetchAllForExport(formId: string, filters: ResponseFilters
 
 // One export row per submission: metadata columns + one column per question,
 // with choice values mapped back to their labels and file links (downloadable URLs) for
-// upload questions.
+// upload questions. For payment questions in native Razorpay mode, adds 4 additional
+// columns: Status, Amount, Payment ID, Verified.
 export async function buildExportRows(
   exportSubs: ResponseSubmission[],
   questions: ResponseQuestion[],
   optionMap: Record<string, Record<string, string>>,
-  supabase?: any  // Optional Supabase client for generating signed URLs
+  supabaseClient?: any  // Optional Supabase client for generating signed URLs and querying payments
 ): Promise<Record<string, string>[]> {
+  // Identify payment questions in native Razorpay mode
+  const paymentQuestions = questions.filter(q => q.type === "payment" && ((q.config?.razorpayAmount ?? 0) >= 100));
+  
+  // Fetch all payment transactions for these submissions if there are payment questions
+  let paymentTransactions: Record<string, any> = {};
+  if (paymentQuestions.length > 0 && supabaseClient) {
+    const submissionIds = exportSubs.map(s => s.id);
+    const questionIds = paymentQuestions.map(q => q.id);
+    
+    try {
+      const { data: txData, error } = await supabaseClient
+        .from("payment_transactions")
+        .select("submission_id, question_id, amount, currency, status, razorpay_payment_id, verified")
+        .in("submission_id", submissionIds)
+        .in("question_id", questionIds);
+      
+      if (!error && txData) {
+        // Build lookup map: submission_id + question_id -> transaction
+        txData.forEach((tx: any) => {
+          const key = `${tx.submission_id}_${tx.question_id}`;
+          paymentTransactions[key] = tx;
+        });
+      }
+    } catch (err) {
+      console.error("Failed to load payment transactions for export:", err);
+    }
+  }
+  
   return Promise.all(
     exportSubs.map(async (s) => {
       const row: Record<string, string> = {
@@ -157,6 +192,36 @@ export async function buildExportRows(
 
       for (const q of questions) {
         const answer = s.answers?.[q.id];
+        const isNativePayment = q.type === "payment" && ((q.config?.razorpayAmount ?? 0) >= 100);
+        
+        // For native Razorpay payment questions, add 4 columns with transaction details
+        if (isNativePayment) {
+          const tx = paymentTransactions[`${s.id}_${q.id}`];
+          
+          if (tx) {
+            // Main answer column shows payment ID
+            row[q.label] = `Payment completed (ID: ${tx.razorpay_payment_id})`;
+            
+            // Additional payment detail columns
+            row[`${q.label} - Status`] = tx.status?.toUpperCase() ?? "UNKNOWN";
+            row[`${q.label} - Amount`] = tx.currency === "INR" 
+              ? `₹${(tx.amount / 100).toFixed(2)}`
+              : `${tx.currency} ${(tx.amount / 100).toFixed(2)}`;
+            row[`${q.label} - Payment ID`] = tx.razorpay_payment_id ?? "";
+            row[`${q.label} - Verified`] = tx.verified ? "Yes" : "No";
+          } else {
+            // No payment transaction found
+            row[q.label] = "No payment recorded";
+            row[`${q.label} - Status`] = "NOT PAID";
+            row[`${q.label} - Amount`] = "";
+            row[`${q.label} - Payment ID`] = "";
+            row[`${q.label} - Verified`] = "No";
+          }
+          
+          continue; // Skip normal answer processing for payment questions
+        }
+        
+        // Normal question handling (non-payment or legacy payment)
         let cellValue = "";
 
         if (answer) {
@@ -164,12 +229,12 @@ export async function buildExportRows(
         } else {
           const qFiles = s.files?.filter(f => f.question_id === q.id) ?? [];
           if (qFiles.length > 0) {
-            if (supabase) {
+            if (supabaseClient) {
               // Generate signed URLs for files (valid for 1 hour)
               const fileUrls = await Promise.all(
                 qFiles.map(async (f) => {
                   try {
-                    const { data, error } = await supabase.storage
+                    const { data, error } = await supabaseClient.storage
                       .from("submission-files")
                       .createSignedUrl(f.file_path, 3600);
                     if (error || !data?.signedUrl) {

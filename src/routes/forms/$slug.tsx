@@ -8,6 +8,8 @@ import { themeContainerStyle, type FormTheme } from "@/lib/theme-utils";
 import { useAuth, useAuthSubmissionStatus } from "@/lib/use-auth";
 import { evaluateLogicRules } from "@/lib/logic-engine";
 import { Loader2, Upload, X, AlertCircle, Eye, CheckCircle2, LogOut } from "lucide-react";
+import { RazorpayPaymentButton } from "@/components/RazorpayPaymentButton";
+import { toast } from "sonner";
 import { z } from "zod";
 
 export const Route = createFileRoute("/forms/$slug")({
@@ -30,6 +32,9 @@ type QConfig = {
   minSelections?: number; maxSelections?: number;
   rows?: string[]; cols?: string[];
   paymentUrl?: string;
+  razorpayAmount?: number;
+  razorpayCurrency?: string;
+  razorpayDescription?: string;
   media?: { path: string; kind: "image" | "video" };
 };
 type Question = {
@@ -166,6 +171,24 @@ function PublicForm() {
     if (!slug) return;
     loadForm();
   }, [slug]);
+
+  // Load Razorpay checkout script for payment questions
+  useEffect(() => {
+    if (document.querySelector('script[src*="checkout.razorpay.com"]')) {
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => {
+      console.log('[Razorpay] Checkout script loaded');
+    };
+    script.onerror = () => {
+      console.error('[Razorpay] Failed to load checkout script');
+    };
+    document.head.appendChild(script);
+  }, []);
 
   // Generate Google OAuth redirect URL (not used currently, using signInWithOAuth instead)
   // Kept for reference if direct OAuth flow is needed in the future
@@ -353,7 +376,12 @@ function PublicForm() {
       return rows.some(r => !grid[r]);
     }
     if (q.type === "payment") {
-      // Required payment → must have uploaded screenshot files
+      const isNativeMode = (q.config?.razorpayAmount ?? 0) >= 100;
+      if (isNativeMode) {
+        // Native Razorpay: must have payment_id (string starting with pay_)
+        return !val || (typeof val === "string" && !val.trim());
+      }
+      // Legacy mode: must have uploaded screenshot files
       return !val || (Array.isArray(val) && val.length === 0);
     }
     return !val || (typeof val === "string" && !val.trim()) || (Array.isArray(val) && val.length === 0);
@@ -503,9 +531,23 @@ function PublicForm() {
     const respondentName = authSession.name || null;
 
     // Build the answers payload for the RPC (file and display types excluded)
+    // Include native Razorpay payment questions (payment_id is a string)
+    // Exclude legacy payment questions (screenshots handled as files)
     // Also exclude hidden questions (conditional logic)
     const answerPayload = questions
-      .filter(q => !["section_heading","information_paragraph","hidden",...FILE_TYPES].includes(q.type))
+      .filter(q => {
+        // Exclude display-only types
+        if (["section_heading","information_paragraph","hidden"].includes(q.type)) return false;
+        // Exclude file upload types (files handled separately)
+        if (FILE_TYPES.includes(q.type) && q.type !== "payment") return false;
+        // Include payment questions in native Razorpay mode (payment_id is a string)
+        // Exclude payment questions in legacy mode (screenshots handled as files)
+        if (q.type === "payment") {
+          const isNativeMode = (q.config?.razorpayAmount ?? 0) >= 100;
+          return isNativeMode;
+        }
+        return true;
+      })
       .filter(q => !hiddenQuestionIds.has(q.id)) // Skip hidden questions
       .flatMap(q => {
         const v = answers[q.id];
@@ -556,6 +598,48 @@ function PublicForm() {
       submitGuard.current = false;
       setErrors({ __form: friendly });
       return;
+    }
+
+    // Record payment transactions for native Razorpay questions
+    const pendingPayments = typeof window !== "undefined" ? (window as any).__pendingPayments || {} : {};
+    for (const q of questions.filter(q => q.type === "payment")) {
+      const isNativeMode = (q.config?.razorpayAmount ?? 0) >= 100;
+      if (!isNativeMode) continue; // Skip legacy screenshot mode
+      
+      const paymentData = pendingPayments[q.id];
+      if (!paymentData) continue; // No payment made (may be optional question)
+      
+      // Record transaction via Supabase RPC
+      const { data: txData, error: txError } = await supabase.rpc("record_payment_transaction", {
+        p_submission_id: result.submission_id,
+        p_question_id: q.id,
+        p_razorpay_order_id: paymentData.order_id,
+        p_razorpay_payment_id: paymentData.payment_id,
+        p_razorpay_signature: paymentData.signature,
+        p_amount: paymentData.amount,
+        p_currency: paymentData.currency,
+        p_status: "captured",
+      });
+      
+      if (txError || !txData || !txData.ok) {
+        console.error(`[payment-record] Failed to record transaction for question ${q.id}:`, txError, txData);
+        
+        // If signature verification failed, this is a critical error
+        if (txData && !txData.verified) {
+          setFormState("ready");
+          toast.error(txData.error || "Payment verification failed. Please contact support if you completed the payment.");
+          return;
+        }
+        
+        // For other errors (network, etc), log but don't fail the submission
+        // Payment was already captured by Razorpay - admin can manually verify
+        toast.warning("Payment recorded but verification pending. Your submission was successful.");
+      }
+    }
+
+    // Clean up pending payments
+    if (typeof window !== "undefined") {
+      delete (window as any).__pendingPayments;
     }
 
     // Upload files to storage, then register metadata through the validated RPC.
@@ -958,6 +1042,7 @@ function PublicForm() {
                   value={answers[q.id]}
                   error={errors[q.id]}
                   onChange={setAnswer}
+                  formContext={{ form, authSession, formState }}
                 />
               ))}
             </div>
@@ -1103,25 +1188,28 @@ function StateCard({ icon, title, message }: { icon: string; title: string; mess
   );
 }
 
-const MemoQuestionField = React.memo(function MemoQuestionField({ question: q, value, error, onChange }: {
+const MemoQuestionField = React.memo(function MemoQuestionField({ question: q, value, error, onChange, formContext }: {
   question: Question;
   value: string | string[] | File[] | undefined;
   error?: string;
   onChange: (id: string, v: string | string[] | File[]) => void;
+  formContext?: { form: Form | null; authSession: any; formState: FormState };
 }) {
-  return <QuestionField question={q} value={value} error={error} onChange={v => onChange(q.id, v)} />
+  return <QuestionField question={q} value={value} error={error} onChange={v => onChange(q.id, v)} formContext={formContext} />
 }, (prev, next) => {
   return prev.question === next.question &&
          prev.value === next.value &&
          prev.error === next.error &&
-         prev.onChange === next.onChange;
+         prev.onChange === next.onChange &&
+         prev.formContext === next.formContext;
 });
 
-function QuestionField({ question: q, value, error, onChange }: {
+function QuestionField({ question: q, value, error, onChange, formContext }: {
   question: Question;
   value: string | string[] | File[] | undefined;
   error?: string;
   onChange: (v: string | string[] | File[]) => void;
+  formContext?: { form: Form | null; authSession: any; formState: FormState };
 }) {
   if (q.type === "section_heading") return (
     <div className="mt-2 pt-2">
@@ -1388,56 +1476,128 @@ function QuestionField({ question: q, value, error, onChange }: {
         </>
       )}
 
-      {/* Payment question — Pay Now button + screenshot upload */}
-      {q.type === "payment" && (
-        <div className="space-y-4">
-          {/* Pay Now button - only show if valid URL is configured */}
-          {q.config?.paymentUrl && (() => {
-            try {
-              const url = new URL(q.config.paymentUrl);
-              return url.protocol === 'http:' || url.protocol === 'https:';
-            } catch {
-              return false;
-            }
-          })() && (
-            <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                    Complete Payment
-                  </p>
-                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                    Click below to proceed to payment gateway
-                  </p>
+      {/* Payment question — Razorpay native checkout OR legacy screenshot upload */}
+      {q.type === "payment" && (() => {
+        const isNativeMode = (q.config?.razorpayAmount ?? 0) >= 100;
+        const paymentId = value as string | undefined;
+        const isPaid = !!paymentId && typeof paymentId === "string" && paymentId.startsWith("pay_");
+
+        if (isNativeMode) {
+          const amount = q.config!.razorpayAmount!;
+          const currency = q.config?.razorpayCurrency ?? "INR";
+          const description = q.config?.razorpayDescription ?? "Payment";
+          const amountDisplay = currency === "INR" 
+            ? `₹${(amount / 100).toFixed(2)}`
+            : `${currency} ${(amount / 100).toFixed(2)}`;
+
+          return (
+            <div className="space-y-3 rounded-lg border border-border bg-secondary/20 p-4">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">Payment Required</p>
+                <p className="text-xs text-muted-foreground">{description}</p>
+                <p className="text-lg font-bold text-primary">{amountDisplay}</p>
+              </div>
+              
+              {isPaid ? (
+                <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>Payment completed</span>
                 </div>
-                <a
-                  href={q.config.paymentUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-                >
-                  Pay Now
-                </a>
+              ) : (
+                <RazorpayPaymentButton
+                  formId={formContext?.form?.id ?? ''}
+                  formTitle={formContext?.form?.title ?? 'Form'}
+                  questionId={q.id}
+                  amount={amount}
+                  currency={currency}
+                  description={description}
+                  userEmail={formContext?.authSession?.email}
+                  userName={formContext?.authSession?.name}
+                  onSuccess={(paymentId, orderDetails) => {
+                    // Store payment_id in form answers
+                    onChange(paymentId);
+                    
+                    // Store payment details for later recording during submission
+                    if (typeof window !== "undefined") {
+                      (window as any).__pendingPayments = (window as any).__pendingPayments || {};
+                      (window as any).__pendingPayments[q.id] = {
+                        order_id: orderDetails.razorpay_order_id,
+                        payment_id: orderDetails.razorpay_payment_id,
+                        signature: orderDetails.razorpay_signature,
+                        amount: amount,
+                        currency: currency,
+                      };
+                    }
+                  }}
+                  disabled={formContext?.formState === "submitting"}
+                />
+              )}
+            </div>
+          );
+        }
+
+        // Legacy mode: external URL + screenshot upload (backward compatibility)
+        const legacyMode = !isNativeMode && q.config?.paymentUrl;
+        if (legacyMode) {
+          const fileValue = value as File[] | undefined;
+          return (
+            <div className="space-y-4">
+              {q.config?.paymentUrl && (() => {
+                try {
+                  const url = new URL(q.config.paymentUrl);
+                  return url.protocol === 'http:' || url.protocol === 'https:';
+                } catch {
+                  return false;
+                }
+              })() && (
+                <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                        Complete Payment
+                      </p>
+                      <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                        Click below to proceed to payment gateway
+                      </p>
+                    </div>
+                    <a
+                      href={q.config.paymentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                    >
+                      Pay Now
+                    </a>
+                  </div>
+                </div>
+              )}
+              
+              <div>
+                <p className="text-sm font-medium text-foreground mb-2">
+                  Upload Payment Screenshot
+                </p>
+                <FileUploader
+                  id={`input-${q.id}`}
+                  files={fileValue ?? []}
+                  accept=".jpg,.jpeg,.png"
+                  acceptExts={[".jpg", ".jpeg", ".png"]}
+                  maxSizeMB={10}
+                  onChange={files => onChange(files)}
+                />
               </div>
             </div>
-          )}
-          
-          {/* Screenshot upload */}
-          <div>
-            <p className="text-sm font-medium text-foreground mb-2">
-              Upload Payment Screenshot
+          );
+        }
+
+        // Neither mode configured
+        return (
+          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
+            <p className="text-sm text-destructive">
+              Payment question not configured. Please contact the form administrator.
             </p>
-            <FileUploader
-              id={`input-${q.id}`}
-              files={(value as File[]) ?? []}
-              accept=".jpg,.jpeg,.png"
-              acceptExts={[".jpg", ".jpeg", ".png"]}
-              maxSizeMB={10}
-              onChange={files => onChange(files)}
-            />
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {q.type === "consent" && (
         <label className="flex items-start gap-2 cursor-pointer text-sm">

@@ -45,7 +45,11 @@ export function displayAnswer(
   if (rawValue == null || rawValue === "") return "";
   if (questionType === "consent") return rawValue === "agreed" ? "Agreed" : rawValue;
   if (questionType === "payment") {
-    // For payment questions, rawValue is the file path or empty
+    // Native Razorpay mode: rawValue is payment_id string (starts with pay_)
+    // Legacy mode: rawValue is file path or empty
+    if (rawValue && rawValue.startsWith("pay_")) {
+      return `Payment completed (ID: ${rawValue})`;
+    }
     return rawValue ? "Payment completed - screenshot uploaded" : "No proof uploaded";
   }
   // Grid answers are a JSON object { row: column } → "Row: Column" lines.

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Calendar, User, Mail, FileText, Download, ExternalLink, Loader2 } from "lucide-react";
+import { X, Calendar, User, Mail, FileText, Download, ExternalLink, Loader2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { displayAnswer } from "@/lib/export-utils";
 import { toast } from "sonner";
@@ -37,7 +37,13 @@ type Question = {
   position: number;
   section_title: string | null;
   section_position?: number;  // Added to track section order
-  config?: { paymentUrl?: string; [key: string]: any };  // Added for payment question support
+  config?: { 
+    paymentUrl?: string;
+    razorpayAmount?: number;
+    razorpayCurrency?: string;
+    razorpayDescription?: string;
+    [key: string]: any 
+  };
 };
 
 interface SubmissionDetailModalProps {
@@ -141,6 +147,36 @@ export function SubmissionDetailModal({
   // file_path of the file whose signed URL is being generated ("open:…" /
   // "dl:…" so the two buttons show independent spinners).
   const [fileBusy, setFileBusy] = useState<string | null>(null);
+  
+  // Payment transactions for native Razorpay payment questions
+  const [paymentTransactions, setPaymentTransactions] = useState<Record<string, any>>({});
+
+  // Load payment transactions for native Razorpay payment questions
+  useEffect(() => {
+    async function loadPaymentTransactions() {
+      const paymentQuestions = questions.filter(q => q.type === "payment" && ((q.config?.razorpayAmount ?? 0) >= 100));
+      if (paymentQuestions.length === 0) return;
+
+      const { data, error } = await supabase
+        .from("payment_transactions")
+        .select("*")
+        .eq("submission_id", submission.id)
+        .in("question_id", paymentQuestions.map(q => q.id));
+
+      if (error) {
+        console.error("Failed to load payment transactions:", error);
+        return;
+      }
+
+      const txMap: Record<string, any> = {};
+      data?.forEach(tx => {
+        txMap[tx.question_id] = tx;
+      });
+      setPaymentTransactions(txMap);
+    }
+
+    loadPaymentTransactions();
+  }, [submission.id, questions]);
 
   async function handleStatusChange(newStatus: string) {
     if (onStatusChange) {
@@ -329,26 +365,87 @@ export function SubmissionDetailModal({
 
                     {/* Answer — choice values mapped to labels (F1/F6) */}
                     <div className="mt-2 w-full min-w-0">
-                      {question.type === "payment" ? (
-                        <div className="space-y-2">
-                          {question.config?.paymentUrl && (
-                            <p className="text-sm text-muted-foreground">
-                              Payment URL:{" "}
-                              <a
-                                href={question.config.paymentUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-primary hover:underline"
-                              >
-                                {question.config.paymentUrl}
-                              </a>
+                      {question.type === "payment" ? (() => {
+                        const isNativeMode = (question.config?.razorpayAmount ?? 0) >= 100;
+                        const tx = paymentTransactions[question.id];
+
+                        if (isNativeMode && tx) {
+                          // Native Razorpay payment - show transaction details
+                          const amount = tx.currency === "INR" 
+                            ? `₹${(tx.amount / 100).toFixed(2)}`
+                            : `${tx.currency} ${(tx.amount / 100).toFixed(2)}`;
+                          const statusColor = 
+                            tx.status === "captured" ? "text-green-600 dark:text-green-400" :
+                            tx.status === "failed" ? "text-red-600 dark:text-red-400" :
+                            "text-yellow-600 dark:text-yellow-400";
+
+                          return (
+                            <div className="space-y-2">
+                              <div className="bg-secondary/30 rounded-lg p-3 border border-border/40 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium">Payment Status:</span>
+                                  <span className={`text-sm font-semibold ${statusColor}`}>
+                                    {tx.status.toUpperCase()}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-muted-foreground">Amount:</span>
+                                  <span className="text-sm font-medium">{amount}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-muted-foreground">Payment ID:</span>
+                                  <span className="text-xs font-mono text-muted-foreground truncate max-w-[200px]">
+                                    {tx.razorpay_payment_id}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs text-muted-foreground">Order ID:</span>
+                                  <span className="text-xs font-mono text-muted-foreground truncate max-w-[200px]">
+                                    {tx.razorpay_order_id}
+                                  </span>
+                                </div>
+                                {tx.verified && (
+                                  <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    <span>Payment verified</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (isNativeMode && !tx) {
+                          // Native mode but no transaction found
+                          return (
+                            <p className="text-sm text-muted-foreground bg-secondary/30 rounded-lg p-3 border border-border/40">
+                              No payment recorded
                             </p>
-                          )}
-                          <p className="text-sm text-muted-foreground bg-secondary/30 rounded-lg p-3 border border-border/40">
-                            {questionFiles.length > 0 ? "✓ Payment completed - screenshot uploaded" : "No proof uploaded"}
-                          </p>
-                        </div>
-                      ) : answer ? (
+                          );
+                        }
+
+                        // Legacy mode - show screenshot status
+                        return (
+                          <div className="space-y-2">
+                            {question.config?.paymentUrl && (
+                              <p className="text-sm text-muted-foreground">
+                                Payment URL:{" "}
+                                <a
+                                  href={question.config.paymentUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline"
+                                >
+                                  {question.config.paymentUrl}
+                                </a>
+                              </p>
+                            )}
+                            <p className="text-sm text-muted-foreground bg-secondary/30 rounded-lg p-3 border border-border/40">
+                              {questionFiles.length > 0 ? "✓ Payment completed - screenshot uploaded" : "No proof uploaded"}
+                            </p>
+                          </div>
+                        );
+                      })() : answer ? (
                         <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words word-break bg-secondary/30 rounded-lg p-3 border border-border/40 w-full overflow-hidden">
                           {displayAnswer(answer.value, question.type, optionMap?.[question.id])}
                         </p>

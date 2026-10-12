@@ -1,10 +1,27 @@
 {
   "verdict": "CHANGES_REQUESTED",
   "findings": [
-    "URL validation bypass — Payment URL input only validates on onChange, allowing invalid URLs to be saved through paste operations or programmatic input that bypass the validation check.",
-    "Missing validation feedback — Pay Now button renders conditionally based on URL validity, but users get no feedback when the button is hidden due to an invalid URL, creating confusion about why payment isn't available.",
-    "Duplicate display line — SubmissionDetailModal.tsx contains a duplicated 'Payment URL: View Payment Page' line at line 334, indicating a copy-paste error.",
-    "Incomplete payment workflow — The system only tracks screenshot presence but provides no mechanism to verify actual payment completion against payment providers or mark payments as verified by administrators."
+    {
+      "severity": "critical",
+      "title": "No server-side signature verification",
+      "description": "record_payment_transaction accepts the Razorpay signature parameter but unconditionally sets verified=true without computing the HMAC-SHA256 hash and comparing it. An attacker can submit razorpay_payment_id='pay_anything' with a random signature and it will be recorded as a verified captured payment. Block deployment until signature verification is implemented using RAZORPAY_KEY_SECRET from Supabase vault.",
+      "confidence": "confirmed",
+      "location": "supabase/migrations/063_razorpay_payment_integration.sql lines 118-123, 183"
+    },
+    {
+      "severity": "critical",
+      "title": "Fake order_id will cause checkout failure",
+      "description": "create_razorpay_order generates a local order_id (order_<random_hex>) instead of calling Razorpay's Orders API. When RazorpayPaymentButton passes this to Razorpay's checkout SDK, Razorpay will reject the unknown order_id and the checkout will fail. Production deployment requires calling Razorpay's POST /v1/orders endpoint with Basic Auth (key_id:key_secret) and returning the real order_id from the response.",
+      "confidence": "confirmed",
+      "location": "supabase/migrations/063_razorpay_payment_integration.sql lines 70-76, 115-116"
+    },
+    {
+      "severity": "minor",
+      "title": "Payment transactions missing from XLSX export",
+      "description": "export-utils.ts was updated to recognize native payment answers (by checking if the value starts with pay_), but the export pipeline doesn't fetch the payment_transactions table or add columns for amount, status, currency, and verified flag. The implementation plan (Step 9) calls for adding 4 columns per payment question but the code only shows the payment_id in the answer column. Admins exporting responses won't see payment verification status or amounts.",
+      "confidence": "likely",
+      "location": "src/lib/export-utils.ts lines 45-53"
+    }
   ],
-  "reviewDoc": "d:\\ITHub\\ith-forms\\.agents\\tasks\\payment-review.md"
+  "reviewDoc": "d:\\ITHub\\ith-forms\\.agents\\tasks\\2025-01-15-120000-review.md"
 }
