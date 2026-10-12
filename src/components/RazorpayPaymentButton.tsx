@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -152,12 +151,14 @@ export function RazorpayPaymentButton({
             setIsProcessing(false);
             toast.info("Payment cancelled");
           },
-          confirm_close: false,
-          backdropclose: false,
         },
       });
 
-      rzp.open();
+      // F9: Razorpay SDK timing fix - give browser a tick to finish SDK initialization
+      // Even though window.Razorpay exists, the constructor may not be fully ready,
+      // causing "browser not supported" popup on first click. Using setTimeout(0)
+      // defers the open() call to the next event loop tick.
+      setTimeout(() => rzp.open(), 0);
     } catch (err) {
       console.error("[payment] Error:", err);
       toast.error(err instanceof Error ? err.message : "An unexpected error occurred. Please try again.");

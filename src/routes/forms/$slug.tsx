@@ -9,7 +9,6 @@ import { useAuth, useAuthSubmissionStatus } from "@/lib/use-auth";
 import { evaluateLogicRules } from "@/lib/logic-engine";
 import { Loader2, Upload, X, AlertCircle, Eye, CheckCircle2, LogOut } from "lucide-react";
 import { RazorpayPaymentButton } from "@/components/RazorpayPaymentButton";
-import { toast } from "sonner";
 import { z } from "zod";
 
 export const Route = createFileRoute("/forms/$slug")({
@@ -183,6 +182,9 @@ function PublicForm() {
     script.async = true;
     script.onload = () => {
       console.log('[Razorpay] Checkout script loaded');
+      // Note: Razorpay SDK includes device fingerprinting that may attempt to
+      // load resources from localhost URLs. These ERR_CONNECTION_REFUSED errors
+      // in the console are expected Razorpay behavior and do not affect functionality.
     };
     script.onerror = () => {
       console.error('[Razorpay] Failed to load checkout script');
@@ -681,9 +683,22 @@ function PublicForm() {
     // upload failed, do NOT show success — the answers are already saved under
     // this submission, and retrying reuses the same idempotency key (so the
     // upload simply re-runs against the same submission, creating no duplicate).
-    const missingRequiredFile = questions.some(
-      q => FILE_TYPES.includes(q.type) && q.required && !(successByQuestion[q.id] > 0)
-    );
+    // Native Razorpay payment questions store payment_id as a string answer, NOT files.
+    const missingRequiredFile = questions.some(q => {
+      if (!q.required) return false;
+      
+      // Native Razorpay mode: payment_id stored as string answer, not a file
+      if (q.type === "payment") {
+        const isNativeMode = (q.config?.razorpayAmount ?? 0) >= 100;
+        if (isNativeMode) {
+          // Payment handled via answer payload, not file upload
+          return false;
+        }
+      }
+      
+      // For actual file uploads (including legacy payment screenshots)
+      return FILE_TYPES.includes(q.type) && !(successByQuestion[q.id] > 0);
+    });
     if (missingRequiredFile) {
       setFormState("ready");
       submitGuard.current = false;
