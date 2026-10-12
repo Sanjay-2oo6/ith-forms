@@ -1,0 +1,30 @@
+{
+  "id": "FEAT-002",
+  "type": "fix",
+  "description": "Update record_payment_transaction RPC to accept NULL submission_id for pre-payment recording flow. Add p_form_id parameter so payment can be recorded before submission exists. When submission_id is NULL, use p_form_id; when submission_id is provided, validate it exists and use its form_id. HMAC signature verification and all other security checks remain unchanged. Depends on FEAT-001 (nullable schema).",
+  "status": "completed",
+  "steps": [
+    "Create supabase/migrations/066_update_payment_rpcs_for_nullable_submission.sql",
+    "Add p_form_id uuid parameter to record_payment_transaction function signature (before p_question_id in parameter list for logical grouping)",
+    "Update submission validation block (lines ~118-126 in migration 063): IF p_submission_id IS NOT NULL THEN validate it exists and get form_id, ELSE use p_form_id directly and set v_form_id := p_form_id",
+    "Update INSERT statement to use v_form_id (which now comes from either submission lookup OR p_form_id parameter)",
+    "Keep HMAC signature verification logic completely unchanged (lines ~138-172 in migration 063)",
+    "Update GRANT statement to include new signature: GRANT EXECUTE ON FUNCTION public.record_payment_transaction(uuid, uuid, text, text, text, integer, text, text) TO authenticated",
+    "Update function COMMENT to document pre-payment mode: 'Records and verifies Razorpay payment with HMAC-SHA256 signature check. Supports pre-payment recording (submission_id=NULL, form_id required) and post-payment recording (submission_id required, form_id optional).'"
+  ],
+  "acceptance_criteria": [
+    "Can call record_payment_transaction with submission_id=NULL and form_id=<valid-uuid> - succeeds and returns transaction_id",
+    "Can call record_payment_transaction with submission_id=<valid-uuid> and form_id=NULL - succeeds (backward compatible)",
+    "Signature verification with incorrect razorpay_signature returns verified=false and error",
+    "Signature verification with correct razorpay_signature returns verified=true",
+    "Transaction record created in payment_transactions table with correct submission_id (NULL or provided value)"
+  ],
+  "verification": [
+    "npm run test:rpc - existing tests should still pass (backward compatibility)",
+    "Add new test case in tests/integration/rpc.test.ts: 'record_payment_transaction accepts NULL submission_id with form_id' - create form, call RPC with submission_id=NULL and form_id set, verify transaction created",
+    "Test signature rejection: Call with tampered signature, verify verified=false in result",
+    "Check database: SELECT submission_id, form_id, verified FROM payment_transactions ORDER BY created_at DESC LIMIT 5 - should show mix of NULL and non-NULL submission_ids"
+  ],
+  "blocked_reason": null,
+  "findings": "Migration 066 created successfully. Function signature updated to include p_form_id parameter after p_submission_id. Logic now handles two flows: (1) Pre-payment: submission_id=NULL, uses p_form_id directly with form existence validation. (2) Post-payment: submission_id provided, validates submission exists and uses its form_id. HMAC signature verification logic preserved exactly as in migration 063. GRANT statement updated for new 9-parameter signature. Backward compatibility maintained - existing calls with submission_id will continue to work."
+}
