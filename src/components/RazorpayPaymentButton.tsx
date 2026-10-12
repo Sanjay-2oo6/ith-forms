@@ -132,42 +132,13 @@ export function RazorpayPaymentButton({
         name: formTitle,
         description: description,
         handler: async function (response: RazorpaySuccessResponse) {
-          // Payment successful - now verify and record on backend
+          // Payment successful - verification will happen during form submission
           console.log("[payment] Payment successful:", response.razorpay_payment_id);
           
-          try {
-            // Record payment transaction with signature verification
-            const { data: recordData, error: recordError } = await supabase.rpc(
-              "record_payment_transaction",
-              {
-                p_submission_id: formId, // Use form ID as temporary identifier
-                p_question_id: questionId,
-                p_razorpay_order_id: response.razorpay_order_id,
-                p_razorpay_payment_id: response.razorpay_payment_id,
-                p_razorpay_signature: response.razorpay_signature,
-                p_amount: amount,
-                p_currency: currency,
-                p_status: "captured",
-              }
-            );
-
-            if (recordError) {
-              console.error("[payment] Recording failed:", recordError);
-              // Even if recording fails, payment was successful
-              // User can retry or contact support
-              toast.warning("Payment received but verification delayed. Your payment will be processed shortly.");
-            } else if (recordData?.ok) {
-              console.log("[payment] Transaction recorded:", recordData);
-              toast.success("Payment completed and verified!");
-            } else {
-              console.error("[payment] Verification failed:", recordData?.error);
-              toast.warning("Payment received but verification failed. Please contact support.");
-            }
-          } catch (err) {
-            console.error("[payment] Error recording transaction:", err);
-            toast.warning("Payment received but recording failed. Please contact support if needed.");
-          }
-
+          // Store payment details for verification during submission
+          // The submit_response RPC will verify the signature and record the transaction
+          toast.success("Payment completed successfully!");
+          
           setIsProcessing(false);
           onSuccess(response.razorpay_payment_id, response);
         },
@@ -183,6 +154,10 @@ export function RazorpayPaymentButton({
             setIsProcessing(false);
             toast.info("Payment cancelled");
           },
+          confirm_close: false, // Don't show "Continue in another browser" popup
+        },
+        retry: {
+          enabled: false, // Disable retry to avoid confusion
         },
       });
 
