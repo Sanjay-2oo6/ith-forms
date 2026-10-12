@@ -9,6 +9,43 @@ declare global {
   }
 }
 
+/**
+ * F10: Wait for Razorpay SDK to be fully initialized and ready.
+ * The script may load (window.Razorpay exists) but the constructor may not be
+ * fully ready on heavily loaded pages or slow devices, causing "browser not supported" errors.
+ * 
+ * This polls with exponential backoff, attempting to construct a test instance to verify
+ * the SDK is truly ready before opening the payment modal.
+ */
+async function waitForRazorpayReady(maxAttempts = 10, initialDelayMs = 50): Promise<boolean> {
+  for (let i = 0; i < maxAttempts; i++) {
+    if (window.Razorpay && typeof window.Razorpay === 'function') {
+      // Additional readiness check: try to construct a dummy instance
+      try {
+        // This will throw if Razorpay isn't fully ready
+        new window.Razorpay({
+          key: 'test_key',
+          amount: 100,
+          currency: 'INR',
+          name: 'Test',
+          description: 'Readiness check',
+          order_id: 'test_order',
+          handler: () => {},
+        });
+        // If we got here, SDK is ready
+        return true;
+      } catch (e) {
+        // Not ready yet, continue waiting
+        console.log(`[payment] Razorpay SDK not ready, attempt ${i + 1}/${maxAttempts}`);
+      }
+    }
+    // Exponential backoff: 50ms, 100ms, 200ms, 400ms...
+    const delay = initialDelayMs * Math.pow(2, i);
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
+  return false;
+}
+
 interface RazorpayOptions {
   key: string;
   amount: number;
@@ -68,9 +105,11 @@ export function RazorpayPaymentButton({
   const [isProcessing, setIsProcessing] = useState(false);
 
   async function handlePayment() {
-    // Validate Razorpay SDK loaded
-    if (!window.Razorpay) {
-      toast.error("Payment system not loaded. Please refresh the page.");
+    // F10: Wait for SDK to be fully ready (not just loaded)
+    // On heavily loaded pages or slow devices, the SDK may exist but not be fully initialized
+    const isReady = await waitForRazorpayReady();
+    if (!isReady) {
+      toast.error("Payment system is still loading. Please wait a moment and try again.");
       return;
     }
 
@@ -154,11 +193,8 @@ export function RazorpayPaymentButton({
         },
       });
 
-      // F9: Razorpay SDK timing fix - give browser a tick to finish SDK initialization
-      // Even though window.Razorpay exists, the constructor may not be fully ready,
-      // causing "browser not supported" popup on first click. Using setTimeout(0)
-      // defers the open() call to the next event loop tick.
-      setTimeout(() => rzp.open(), 0);
+      // F10: SDK is verified ready by waitForRazorpayReady(), safe to open immediately
+      rzp.open();
     } catch (err) {
       console.error("[payment] Error:", err);
       toast.error(err instanceof Error ? err.message : "An unexpected error occurred. Please try again.");

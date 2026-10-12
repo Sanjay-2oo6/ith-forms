@@ -518,6 +518,9 @@ function PublicForm() {
     submitGuard.current = true;
     setFormState("submitting");
 
+    // F10: Wrap entire submit logic in try-finally to prevent guard leak on uncaught errors
+    try {
+
     // Verify authentication is present
     if (!authSession || !authSession.email) {
       setFormState("ready");
@@ -536,6 +539,10 @@ function PublicForm() {
     // Include native Razorpay payment questions (payment_id is a string)
     // Exclude legacy payment questions (screenshots handled as files)
     // Also exclude hidden questions (conditional logic)
+    // 
+    // Native mode detection: razorpayAmount >= 100 paise (1 INR) is Razorpay's API
+    // minimum for certain payment methods. Questions with amount >= 100 use native
+    // checkout; amounts < 100 or missing use legacy screenshot upload mode.
     const answerPayload = questions
       .filter(q => {
         // Exclude display-only types
@@ -683,7 +690,12 @@ function PublicForm() {
     // upload failed, do NOT show success — the answers are already saved under
     // this submission, and retrying reuses the same idempotency key (so the
     // upload simply re-runs against the same submission, creating no duplicate).
-    // Native Razorpay payment questions store payment_id as a string answer, NOT files.
+    // 
+    // F10: Native Razorpay payment questions store payment_id as a string answer, NOT files.
+    // Native mode detection: razorpayAmount >= 100 paise (1 INR) triggers native Razorpay
+    // checkout integration. This threshold matches Razorpay's API minimum for certain payment
+    // methods. Amounts < 100 or missing amount use legacy screenshot upload mode for backward
+    // compatibility with forms created before native integration.
     const missingRequiredFile = questions.some(q => {
       if (!q.required) return false;
       
@@ -720,6 +732,25 @@ function PublicForm() {
     }
     
     setFormState("done");
+    } catch (unexpectedError) {
+      // F10: Catch any unexpected errors that might leave the guard locked
+      // (storage upload errors, RPC failures, localStorage quota exceeded, etc.)
+      console.error("[submit] Unexpected error during submission:", unexpectedError);
+      setFormState("ready");
+      submitGuard.current = false;
+      setErrors({ 
+        __form: unexpectedError instanceof Error 
+          ? `An error occurred: ${unexpectedError.message}` 
+          : "An unexpected error occurred. Please try again." 
+      });
+    } finally {
+      // F10: Safety net — always reset guard if form didn't transition to 'done' state
+      // (done state means success, guard should stay locked to prevent double-submit)
+      // The explicit resets in error paths are kept for better UX (immediate feedback)
+      if (formState !== "done") {
+        submitGuard.current = false;
+      }
+    }
   }
 
   // Public URL for the theme background (form-assets is a public-read bucket).
